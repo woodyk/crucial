@@ -17,16 +17,7 @@ curl -X POST -H "Content-Type: application/json" -d '{
             "y": 1,
             "z": 1
         },
-        "object_physics": {
-            "mass": 1,
-            "friction": 0.5
-        },
         "object_visibility": true,
-        "object_lighting": {
-            "light_type": "directional",
-            "light_color": [1, 1, 1, 1],
-            "light_direction": [0, -60, 0]
-        },
         "object_control": {
             "controller_type": "keyboard",
             "controller_inputs": {
@@ -36,14 +27,14 @@ curl -X POST -H "Content-Type: application/json" -d '{
                 "right": "right"
             }
         },
-        "object_color": "#FF0000",
+        "object_color": "green",
         "object_size": {
-            "radius": 10
+            "radius": 70,
         },
         "object_state": "moveable",
         "object_init": {
-            "x": 20,
-            "y": 20 
+            "x": 0,
+            "y": 0
         },
         "object_action": "touch",
         "object_reaction": "explode"

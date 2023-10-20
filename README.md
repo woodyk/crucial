@@ -54,7 +54,8 @@ The JSON object has the following structure:
   "object_state": "moveable",
   "object_init": {
    "x": 0,
-   "y": 0
+   "y": 0,
+   "z": 0
   },
   "object_action": "touch",
   "object_reaction": "explode"

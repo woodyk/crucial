@@ -6,7 +6,6 @@ from flask import Flask, request
 from threading import Thread
 from panda3d.core import GeomVertexFormat, GeomVertexData, GeomVertexData
 from panda3d.core import Geom, GeomTriangles, GeomVertexWriter
-from panda3d.core import GeomNode
 from panda3d.core import Point3, Vec3, Vec4
 from panda3d.core import Shader
 from panda3d.core import Texture, TextureStage
@@ -16,36 +15,146 @@ from panda3d.core import PerspectiveLens
 from panda3d.core import TextNode
 from panda3d.core import LPoint3, LVector3
 from panda3d.core import BitMask32
-from math import sin, cos, pi
-from direct.showbase.ShowBase import ShowBase
-from direct.gui.OnscreenText import OnscreenText
-from direct.task.Task import Task
-from direct.actor.Actor import Actor
-from direct.interval.IntervalGlobal import Sequence
+from panda3d.core import loadPrcFileData, LineSegs, GeomNode
+from panda3d.core import MouseButton
 from panda3d.core import CollisionTraverser, CollisionNode
 from panda3d.core import CollisionHandlerQueue, CollisionRay
 from panda3d.core import Filename, ExecutionEnvironment
 from panda3d.core import NodePath, Camera, TextNode
 from panda3d.core import Point3
 from direct.showbase.ShowBase import ShowBase
+from direct.gui.OnscreenText import OnscreenText
+from direct.task.Task import Task
+from direct.actor.Actor import Actor
+from direct.interval.IntervalGlobal import Sequence
+from direct.showbase.DirectObject import DirectObject
 from direct.task import Task
+from math import sin, cos, pi
 import matplotlib.colors as mcolors
 import uuid
 import json
 import sys
 
 class GameApp(ShowBase):
-    def __init__(self):
+    def __init__(self, resolution=(1280, 720), fps=60):
+        # Set the resolution.
+        loadPrcFileData("", "win-size 1280 720")  # Set the resolution to 1280x720.
+
+        # Set the FPS.
+        loadPrcFileData("", "clock-mode limited")  # Limit the frame rate.
+        loadPrcFileData("", "clock-frame-rate 60")  # Set the frame rate to 60 FPS.
+
         ShowBase.__init__(self)
+
+        # Set the camera's position and focus.
+        self.camera.setPos(0, -10, 0)
+        self.camera.lookAt(0, 0, 0)
 
         # Set up the task manager.
         self.taskMgr.add(self.update, "updateTask")
+
+        # Disable the default mouse controls.
+        self.disableMouse()
+
+        # Add the task that will update the camera position each frame.
+        self.taskMgr.add(self.update_camera, "update_camera")
+
+        # Create the reference stick.
+        self.create_reference_stick()
+
+        # Set up the keyboard controls.
+        self.accept('shift-=', self.zoom_in)  # Zoom in when shift and + are pressed.
+        self.accept('shift--', self.zoom_out)  # Zoom out when shift and - are pressed.
+
+        # Set up the keyboard control.
+        self.accept('shift-a', self.reveal_all_objects)
+
+        # Set up the keyboard control.
+        self.accept('shift-c', self.center_camera)
+
+        # Set the background color to black.
+        self.setBackgroundColor(0, 0, 0)  # RGB values for black.
 
         # Set up a dictionary to hold game objects.
         self.game_objects = {}
 
         # Initialize the objects dictionary.
         self.objects = {}
+
+    def center_camera(self):
+        # Set the camera's position and focus to the origin.
+        self.camera.setPos(0, -10, 0)
+        self.camera.lookAt(0, 0, 0)
+
+    def reveal_all_objects(self):
+        # Loop over all objects and make them visible.
+        for obj in self.render.get_children():
+            obj.show()
+
+    def zoom_in(self):
+        # Move the camera closer to the origin.
+        self.camera.setY(self.camera.getY() + 1)
+
+    def zoom_out(self):
+        # Move the camera further from the origin.
+        self.camera.setY(self.camera.getY() - 1)
+
+    def update_camera(self, task):
+        # Check if the zoom in key is down.
+        if self.mouseWatcherNode.is_button_down('shift-='):
+            self.zoom_in()
+
+        # Check if the zoom out key is down.
+        if self.mouseWatcherNode.is_button_down('shift--'):
+            self.zoom_out()
+
+        # Use the shift-right-arrow and shift-left-arrow keys to pan.
+        if self.mouseWatcherNode.is_button_down('shift-arrow_right'):
+            self.pan_right()
+        elif self.mouseWatcherNode.is_button_down('shift-arrow_left'):
+            self.pan_left()
+
+        # Check if the right mouse button is down.
+        if self.mouseWatcherNode.hasMouse() and self.mouseWatcherNode.is_button_down(MouseButton.three()):
+            # Get the mouse position.
+            x = self.mouseWatcherNode.get_mouse_x()
+            y = self.mouseWatcherNode.get_mouse_y()
+
+            # Use the mouse position to rotate the camera.
+            self.camera.setHpr(x * 360, y * 360, 0)
+
+            # Use the mouse wheel to zoom in and out.
+            if self.mouseWatcherNode.is_button_down(MouseButton.wheel_up()):
+                self.zoom_in()
+            elif self.mouseWatcherNode.is_button_down(MouseButton.wheel_down()):
+                self.zoom_out()
+
+        return Task.cont
+
+    def create_reference_stick(self):
+        # Create the lines for the x, y, and z axes.
+        x_line = LineSegs()
+        x_line.set_thickness(5)  # Set the thickness to 2.
+        x_line.set_color(0, 0, 1, 1)  # Blue.
+        x_line.draw_to(5000, 0, 0)  # Set the length to 5.
+        y_line = LineSegs()
+        y_line.set_thickness(5)  # Set the thickness to 2.
+        y_line.set_color(1, 1, 0, 1)  # Yellow.
+        y_line.draw_to(0, 5000, 0)  # Set the length to 5.
+        z_line = LineSegs()
+        z_line.set_thickness(5)  # Set the thickness to 2.
+        z_line.set_color(1, 0, 0, 1)  # Red.
+        z_line.draw_to(0, 0, 5000)  # Set the length to 5.
+
+        # Create the node paths for the lines.
+        x_node = NodePath(x_line.create())
+        y_node = NodePath(y_line.create())
+        z_node = NodePath(z_line.create())
+
+        # Attach the lines to the render.
+        x_node.reparent_to(self.render)
+        y_node.reparent_to(self.render)
+        z_node.reparent_to(self.render)
 
     def update(self, task):
         dt = globalClock.getDt()
@@ -82,8 +191,9 @@ class GameApp(ShowBase):
                 size = object_attributes.get('size', 1)
                 game_object = self.make_cube(size)
             elif object_type == 'circle':
-                radius = object_attributes.get('radius', 1)
-                slices = object_attributes.get('slices', 20)
+                size_attrib = object_attributes.get('object_size')
+                radius = size_attrib.get('radius', 1)
+                slices = size_attrib.get('slices', 20)
                 game_object = self.make_circle(radius, slices)
             elif object_type == 'triangle':
                 size = object_attributes.get('size', 1)
@@ -101,7 +211,7 @@ class GameApp(ShowBase):
         game_object.setColor(Vec4(*color_rgba))  # Set the color or default to white.
 
         # Scale the object
-        game_object.setScale(object_attributes.get('object_size', 1))  # Set the scale or default to 1.
+        #game_object.setScale(object_attributes.get('object_size', 1))  # Set the scale or default to 1.
 
         # Position the object
         init_pos = object_attributes.get('object_init', {'x': 0, 'y': 0, 'z': 0})
@@ -397,12 +507,31 @@ class APIApp:
     def run(self):
         self.app.run()
 
-game = GameApp()  # Create an instance of GameApp
+game = GameApp(resolution=(1024, 768), fps=30)  # Create an instance of GameApp
 api = APIApp(game)  # Pass the GameApp instance to APIApp
 
 # Start the API in a separate thread
 api_thread = Thread(target=api.run)
 api_thread.start()
+
+game.create_object({
+    "object_name": "myCircle",
+    "object_type": "circle",
+    "object_attributes": {
+        "object_color": "red",
+        "object_size": {
+            "radius": 1,
+            "slices": 20
+        },
+        "object_init": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+        }
+    }
+})
+
+
 
 # Start the game
 game.run()
