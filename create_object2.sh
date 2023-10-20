@@ -17,7 +17,7 @@ curl -X POST -H "Content-Type: application/json" -d '{
             "y": 1,
             "z": 1
         },
-        "object_visibility": true,
+        "object_visibility": "true",
         "object_control": {
             "controller_type": "keyboard",
             "controller_inputs": {
