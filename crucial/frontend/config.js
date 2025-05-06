@@ -11,6 +11,24 @@ export const config = {
         fadeDuration: 800
     },
     drawing: {
+}
+
+graph: {
+    bar: {
+        defaultColor: "#3498db",
+        labelFont: "12px sans-serif",
+        labelColor: "#ffffff"
+    }
+},
+
+    animateShapes: true,
+    shapeAnimationSpeed: 1.0,
+    ghostBrushEnabled: true,
+    ghostBrushStyle: {
+        color: "#ffffff88",
+        sizeFactor: 1.0,
+        outline: true
+    },
         brushFade: true,
         brushColor: "#ffffff88",
         minBrushRadius: 2,
