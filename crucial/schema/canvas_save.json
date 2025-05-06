@@ -1,0 +1,23 @@
+{
+    "name": "canvas_save",
+    "description": "Save the canvas to an image or vector file",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "object_uri": {
+                "type": "string"
+            },
+            "file_path": {
+                "type": "string"
+            },
+            "format": {
+                "type": "string"
+            }
+        },
+        "required": [
+            "object_uri",
+            "file_path",
+            "format"
+        ]
+    }
+}

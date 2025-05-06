@@ -1,0 +1,40 @@
+{
+    "name": "canvas_graph_line",
+    "description": "Draw a line graph on the canvas",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "object_uri": {
+                "type": "string"
+            },
+            "data": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "x": {
+                            "type": "number"
+                        },
+                        "y": {
+                            "type": "number"
+                        }
+                    },
+                    "required": [
+                        "x",
+                        "y"
+                    ]
+                }
+            },
+            "axis_config": {
+                "type": "object"
+            },
+            "color": {
+                "type": "string"
+            }
+        },
+        "required": [
+            "object_uri",
+            "data"
+        ]
+    }
+}

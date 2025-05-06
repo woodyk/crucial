@@ -1,0 +1,46 @@
+{
+    "name": "canvas_graph_pie",
+    "description": "Draw a pie chart on the canvas",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "object_uri": {
+                "type": "string"
+            },
+            "data": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "label": {
+                            "type": "string"
+                        },
+                        "value": {
+                            "type": "number"
+                        }
+                    },
+                    "required": [
+                        "label",
+                        "value"
+                    ]
+                }
+            },
+            "center_x": {
+                "type": "integer"
+            },
+            "center_y": {
+                "type": "integer"
+            },
+            "radius": {
+                "type": "integer"
+            }
+        },
+        "required": [
+            "object_uri",
+            "data",
+            "center_x",
+            "center_y",
+            "radius"
+        ]
+    }
+}

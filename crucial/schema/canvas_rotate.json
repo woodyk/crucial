@@ -1,0 +1,19 @@
+{
+    "name": "canvas_rotate",
+    "description": "Rotate the canvas coordinate space",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "object_uri": {
+                "type": "string"
+            },
+            "angle_in_degrees": {
+                "type": "number"
+            }
+        },
+        "required": [
+            "object_uri",
+            "angle_in_degrees"
+        ]
+    }
+}

@@ -1,0 +1,35 @@
+{
+    "name": "canvas_draw_circle",
+    "description": "Draw a circle on the canvas",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "object_uri": {
+                "type": "string"
+            },
+            "center_x": {
+                "type": "integer"
+            },
+            "center_y": {
+                "type": "integer"
+            },
+            "radius": {
+                "type": "integer"
+            },
+            "color": {
+                "type": "string"
+            },
+            "fill": {
+                "type": "string"
+            }
+        },
+        "required": [
+            "object_uri",
+            "center_x",
+            "center_y",
+            "radius",
+            "color",
+            "fill"
+        ]
+    }
+}

@@ -1,0 +1,33 @@
+{
+    "name": "canvas_graph_scatter",
+    "description": "Draw a scatter plot on the canvas",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "object_uri": {
+                "type": "string"
+            },
+            "points": {
+                "type": "array",
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    },
+                    "minItems": 2,
+                    "maxItems": 2
+                }
+            },
+            "color": {
+                "type": "string"
+            },
+            "axis_config": {
+                "type": "object"
+            }
+        },
+        "required": [
+            "object_uri",
+            "points"
+        ]
+    }
+}

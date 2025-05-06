@@ -1,0 +1,27 @@
+{
+    "name": "canvas_create",
+    "description": "Create a new canvas session",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "name": {
+                "type": "string"
+            },
+            "x": {
+                "type": "integer"
+            },
+            "y": {
+                "type": "integer"
+            },
+            "color": {
+                "type": "string"
+            }
+        },
+        "required": [
+            "name",
+            "x",
+            "y",
+            "color"
+        ]
+    }
+}

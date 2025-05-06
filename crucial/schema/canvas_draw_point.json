@@ -1,0 +1,31 @@
+{
+    "name": "canvas_draw_point",
+    "description": "Draw a single point or dot on the canvas",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "object_uri": {
+                "type": "string"
+            },
+            "x": {
+                "type": "integer"
+            },
+            "y": {
+                "type": "integer"
+            },
+            "color": {
+                "type": "string"
+            },
+            "radius": {
+                "type": "integer"
+            }
+        },
+        "required": [
+            "object_uri",
+            "x",
+            "y",
+            "color",
+            "radius"
+        ]
+    }
+}

@@ -1,0 +1,34 @@
+{
+    "name": "canvas_graph_heatmap",
+    "description": "Draw a heatmap matrix on the canvas",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "object_uri": {
+                "type": "string"
+            },
+            "matrix": {
+                "type": "array",
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    }
+                }
+            },
+            "labels": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                }
+            },
+            "color_map": {
+                "type": "string"
+            }
+        },
+        "required": [
+            "object_uri",
+            "matrix"
+        ]
+    }
+}

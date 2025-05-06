@@ -1,0 +1,28 @@
+{
+    "name": "canvas_graph_histogram",
+    "description": "Draw a histogram on the canvas",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "object_uri": {
+                "type": "string"
+            },
+            "values": {
+                "type": "array",
+                "items": {
+                    "type": "number"
+                }
+            },
+            "bins": {
+                "type": "integer"
+            },
+            "normalize": {
+                "type": "boolean"
+            }
+        },
+        "required": [
+            "object_uri",
+            "values"
+        ]
+    }
+}

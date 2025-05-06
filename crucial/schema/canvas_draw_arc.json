@@ -1,0 +1,43 @@
+{
+    "name": "canvas_draw_arc",
+    "description": "Draw an arc segment of a circle",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "object_uri": {
+                "type": "string"
+            },
+            "center_x": {
+                "type": "integer"
+            },
+            "center_y": {
+                "type": "integer"
+            },
+            "radius": {
+                "type": "integer"
+            },
+            "start_angle": {
+                "type": "number"
+            },
+            "end_angle": {
+                "type": "number"
+            },
+            "color": {
+                "type": "string"
+            },
+            "width": {
+                "type": "integer"
+            }
+        },
+        "required": [
+            "object_uri",
+            "center_x",
+            "center_y",
+            "radius",
+            "start_angle",
+            "end_angle",
+            "color",
+            "width"
+        ]
+    }
+}

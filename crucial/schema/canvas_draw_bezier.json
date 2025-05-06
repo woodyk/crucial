@@ -1,0 +1,35 @@
+{
+    "name": "canvas_draw_bezier",
+    "description": "Draw a Bezier curve on the canvas",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "object_uri": {
+                "type": "string"
+            },
+            "control_points": {
+                "type": "array",
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    },
+                    "minItems": 2,
+                    "maxItems": 2
+                }
+            },
+            "color": {
+                "type": "string"
+            },
+            "width": {
+                "type": "integer"
+            }
+        },
+        "required": [
+            "object_uri",
+            "control_points",
+            "color",
+            "width"
+        ]
+    }
+}
