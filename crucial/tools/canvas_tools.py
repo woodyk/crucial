@@ -64,7 +64,7 @@ def canvas_create(name: str, x: int, y: int, color: str) -> dict:
         raise RuntimeError("Canvas creation failed.")
     _set_last_canvas_id(canvas_id)
     print(f"[✓] Created: {canvas_id}")
-# Modified: 2025-05-07 12:42:06
+# Modified: 2025-05-07 15:57:41
     print(f"[🔗] View: {CONFIG['url']}/?id={canvas_id}")
     return result
 
