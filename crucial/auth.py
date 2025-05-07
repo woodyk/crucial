@@ -2,11 +2,15 @@
 # Description: API key and user authentication for Crucial
 # Author: Ms. White
 # Created: 2025-05-06
+# Modified: 2025-05-07 12:38:53
 
 import json
 from pathlib import Path
 from fastapi import HTTPException
-from crucial.config import CONFIG
+from crucial.config import CONFIG, get_logger
+
+logger = get_logger(__name__)
+
 
 def load_keys():
     """
@@ -19,13 +23,13 @@ def load_keys():
         return set(json.load(f))
 
 def validate_api_key(key: str) -> bool:
-    """
-    Validate the provided API key against known good keys.
-    """
     if not CONFIG["AUTH"]["require_api_key"]:
+        logger.debug("API key check bypassed (require_api_key=False)")
         return True
     valid_keys = load_keys()
-    return key in valid_keys
+    result = key in valid_keys
+    logger.debug("API key %s: %s", key, "ACCEPTED" if result else "REJECTED")
+    return result
 
 def require_api_key_header(headers):
     """

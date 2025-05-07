@@ -5,7 +5,7 @@
 # Description: Test human-readable canvas ID with ThreeJS rendering
 # Author: Ms. White
 # Created: 2025-05-07
-# Modified: 2025-05-06 22:23:36
+# Modified: 2025-05-07 13:48:03
 
 import requests
 import json
@@ -30,7 +30,7 @@ def create_canvas():
     print(json.dumps(data, indent=2))
     return data["canvas_id"], data["human_id"]
 
-def inject_threejs(object_id):
+def inject_threejs(canvas_id):
     full_html = """
     <!DOCTYPE html>
     <html lang="en">
@@ -73,15 +73,15 @@ def inject_threejs(object_id):
     payload = {
         "action": "canvas_render_threejs",
         "params": {
-            "object_uri": object_id,
+            "canvas_id": canvas_id,
             "script": full_html
         }
     }
 
     response = requests.post(f"{BASE_URL}/canvas", headers=HEADERS, json=payload)
-    print(f"Render for ID: {object_id} → {response.status_code}")
+    print(f"Render for ID: {canvas_id} → {response.status_code}")
     print(response.json())
-    assert response.status_code == 200, f"Render failed for ID: {object_id}"
+    assert response.status_code == 200, f"Render failed for ID: {canvas_id}"
 
 
 def main():

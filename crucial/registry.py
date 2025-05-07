@@ -2,9 +2,13 @@
 # Description: Dynamic MCP-compatible registry based on schema directory
 # Author: Ms. White
 # Created: 2025-05-06
+# Modified: 2025-05-07 12:39:34
 
 import json
 import os
+from crucial.config import get_logger
+
+logger = get_logger(__name__)
 
 SCHEMA_DIR = os.path.join(os.path.dirname(__file__), "schema")
 
@@ -27,6 +31,7 @@ def get_registry():
                         "parameters": schema.get("parameters", {})
                     })
             except Exception as e:
+                logger.warning("Failed to load schema: %s (%s)", filename, e)
                 print(f"Failed to load schema: {filename} ({e})")
 
     return {"modules": modules}

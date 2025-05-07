@@ -43,3 +43,4 @@ crucial/tools/.last_canvas_id
 # Secrets or keys
 *.key
 *.pem
+logs/*

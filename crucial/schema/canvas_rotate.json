@@ -4,7 +4,7 @@
     "parameters": {
         "type": "object",
         "properties": {
-            "object_uri": {
+            "canvas_id": {
                 "type": "string"
             },
             "angle_in_degrees": {
@@ -12,7 +12,7 @@
             }
         },
         "required": [
-            "object_uri",
+            "canvas_id",
             "angle_in_degrees"
         ]
     }

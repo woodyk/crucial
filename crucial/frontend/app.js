@@ -2,7 +2,7 @@
 // Author: Crucial
 // Description: Real-time animated frontend renderer for Crucial Canvas
 // Created: 2025-05-06
-// Modified: 2025-05-06 19:59:30
+// Modified: 2025-05-07 13:44:16
 
 import { config } from './config.js';
 
@@ -61,8 +61,15 @@ function showCanvasName(name) {
 // =================== Boot =======================
 
 function createFrame(width, height) {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    canvas.width = width;
+    canvas.height = height;
+    canvas.style.width = width + "px";
+    canvas.style.height = height + "px";
+    canvas.style.position = "absolute";
+    canvas.style.top = "50%";
+    canvas.style.left = "50%";
+    canvas.style.transform = "translate(-50%, -50%)";
+
     document.body.style.background = `url(${config.transparencyGrid.backgroundImage})`;
     document.body.style.backgroundSize = config.transparencyGrid.backgroundSize;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -106,6 +113,10 @@ function startPolling() {
 window.addEventListener("load", async () => {
     const meta = await loadCanvasMetadata(canvasId);
     if (!meta) return;
+
+    // Set canvas size from metadata
+    createFrame(meta.width, meta.height);
+
     showCanvasName(meta.name);
     startPolling();
 });
@@ -135,9 +146,24 @@ const renderRegistry = {
 
 async function renderCreate(entry) {
     const { x, y, color } = entry.params;
+
     if (!isFramed) {
-        createFrame(x, y);
-        fadeInBackground(color, config.backgroundFadeDuration);
+        // Set canvas size and center it
+        canvas.width = x;
+        canvas.height = y;
+        canvas.style.width = x + "px";
+        canvas.style.height = y + "px";
+        canvas.style.position = "absolute";
+        canvas.style.top = "50%";
+        canvas.style.left = "50%";
+        canvas.style.transform = "translate(-50%, -50%)";
+
+        // Apply transparency grid
+        document.body.style.background = `url(${config.transparencyGrid.backgroundImage})`;
+        document.body.style.backgroundSize = config.transparencyGrid.backgroundSize;
+
+        // Fill background with fade-in
+        fadeInBackground(color || "#111", config.backgroundFadeDuration);
         isFramed = true;
     }
 }
@@ -178,9 +204,11 @@ async function renderDrawRectangle(entry) {
 
 async function renderDrawText(entry) {
     const { text, x, y, font, size, color } = entry.params;
+    ctx.save();
     ctx.font = `${size}px ${font}`;
-    ctx.fillStyle = color;
+    ctx.fillStyle = color || "#ffffff";
     ctx.fillText(text, x, y);
+    ctx.restore();
 }
 
 async function renderDrawPoint(entry) {

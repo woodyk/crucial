@@ -2,9 +2,10 @@
 # Description: Central configuration for Crucial platform
 # Author: Ms. White
 # Created: 2025-05-06
-# Modified: 2025-05-06 16:30:26
+# Modified: 2025-05-07 12:39:14
 
 import os
+import logging
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -29,7 +30,6 @@ CONFIG = {
         "replay_delay_ms": int(os.getenv("FRONTEND_REPLAY_DELAY", 30)),
         "theme": os.getenv("FRONTEND_THEME", "dark")
     },
-    
     "DATABASE": {
         "path": os.getenv("CRUCIAL_DB_PATH", "crucial.db")
     },
@@ -41,5 +41,37 @@ CONFIG = {
         "api_base_url": os.getenv("TOOLS_API_URL", "http://localhost:8000/canvas"),
         "timeout": int(os.getenv("TOOLS_TIMEOUT", 10)),
         "retries": int(os.getenv("TOOLS_RETRIES", 3))
+    },
+    "LOGGING": {
+        "log_to_file": os.getenv("CRUCIAL_LOG_TO_FILE", "true").lower() == "true",
+        "log_path": os.getenv("CRUCIAL_LOG_PATH", "logs/crucial.log"),
+        "debug": os.getenv("CRUCIAL_LOG_DEBUG", "false").lower() == "true"
     }
 }
+
+def get_logger(name: str) -> logging.Logger:
+    os.makedirs(os.path.dirname(CONFIG["LOGGING"]["log_path"]), exist_ok=True)
+
+    logger = logging.getLogger(name)
+    if logger.handlers:
+        return logger  # Prevent duplicate handlers
+
+    level = logging.DEBUG if CONFIG["LOGGING"]["debug"] else logging.INFO
+    logger.setLevel(level)
+
+    fmt = logging.Formatter(
+        fmt="%(asctime)s [%(levelname)s] [%(name)s] %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S"
+    )
+
+    stream = logging.StreamHandler()
+    stream.setFormatter(fmt)
+    logger.addHandler(stream)
+
+    if CONFIG["LOGGING"]["log_to_file"]:
+        file_handler = logging.FileHandler(CONFIG["LOGGING"]["log_path"])
+        file_handler.setFormatter(fmt)
+        logger.addHandler(file_handler)
+
+    return logger
+

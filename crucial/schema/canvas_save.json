@@ -4,7 +4,7 @@
     "parameters": {
         "type": "object",
         "properties": {
-            "object_uri": {
+            "canvas_id": {
                 "type": "string"
             },
             "file_path": {
@@ -15,7 +15,7 @@
             }
         },
         "required": [
-            "object_uri",
+            "canvas_id",
             "file_path",
             "format"
         ]

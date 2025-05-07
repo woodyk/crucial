@@ -4,7 +4,7 @@
     "parameters": {
         "type": "object",
         "properties": {
-            "object_uri": {
+            "canvas_id": {
                 "type": "string"
             },
             "matrix": {
@@ -27,7 +27,7 @@
             }
         },
         "required": [
-            "object_uri",
+            "canvas_id",
             "matrix"
         ]
     }

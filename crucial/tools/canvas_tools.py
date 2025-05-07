@@ -40,7 +40,7 @@ def _inject_canvas(payload: dict) -> dict:
     canvas_id = _get_last_canvas_id()
     if not canvas_id:
         raise ValueError("No canvas is active. Call canvas_create() first.")
-    payload["object_uri"] = canvas_id
+    payload["canvas_id"] = canvas_id
     return payload
 
 # === LLM Tool Functions ===
@@ -62,9 +62,9 @@ def canvas_create(name: str, x: int, y: int, color: str) -> dict:
     canvas_id = result.get("canvas_id")
     if not canvas_id:
         raise RuntimeError("Canvas creation failed.")
-    object_uri = f"crucial://canvas/{canvas_id}"
-    _set_last_canvas_id(object_uri)
-    print(f"[✓] Created: {object_uri}")
+    _set_last_canvas_id(canvas_id)
+    print(f"[✓] Created: {canvas_id}")
+# Modified: 2025-05-07 12:42:06
     print(f"[🔗] View: {CONFIG['url']}/?id={canvas_id}")
     return result
 

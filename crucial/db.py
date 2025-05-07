@@ -5,11 +5,13 @@
 # Description: SQLite data model and helpers for Crucial canvas platform
 # Author: Ms. White
 # Created: 2025-05-06
-# Modified: 2025-05-06 20:41:09
+# Modified: 2025-05-07 12:39:21
 
 import sqlite3
 from pathlib import Path
-from crucial.config import CONFIG
+from crucial.config import CONFIG, get_logger
+
+logger = get_logger(__name__)
 
 DB_PATH = Path(CONFIG["DATABASE"]["path"])
 
@@ -43,6 +45,7 @@ def init_db():
     Create all Crucial database tables if not already present.
     """
     with sqlite3.connect(DB_PATH) as conn:
+        logger.info("Initializing database at %s", DB_PATH)
         _ensure_tables_exist(conn)
 
 def get_db_connection():
@@ -52,6 +55,7 @@ def get_db_connection():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
+    logger.debug("Opened DB connection to %s", DB_PATH)
     _ensure_tables_exist(conn)
     return conn
 
@@ -76,6 +80,7 @@ def _ensure_tables_exist(conn):
                     cursor.execute(f"ALTER TABLE {table} ADD COLUMN {col_name} {col_type}")
 
     conn.commit()
+    logger.debug("Ensured DB tables are up to date")
 
 def _get_existing_tables(cursor):
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")

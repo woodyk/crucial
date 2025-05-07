@@ -4,7 +4,7 @@
     "parameters": {
         "type": "object",
         "properties": {
-            "object_uri": {
+            "canvas_id": {
                 "type": "string"
             },
             "scale_x": {
@@ -15,7 +15,7 @@
             }
         },
         "required": [
-            "object_uri",
+            "canvas_id",
             "scale_x",
             "scale_y"
         ]

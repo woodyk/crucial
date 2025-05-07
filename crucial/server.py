@@ -6,7 +6,7 @@
 #              including frontend static hosting
 # Author: Ms. White
 # Created: 2025-05-06
-# Modified: 2025-05-06 22:06:22
+# Modified: 2025-05-07 13:52:40
 
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse, FileResponse
@@ -20,7 +20,9 @@ from crucial.dispatcher import Dispatcher
 from crucial.db import get_db_connection
 from crucial.canvas import Canvas
 from crucial.auth import require_api_key_header
-from crucial.config import CONFIG
+from crucial.config import CONFIG, get_logger
+
+logger = get_logger(__name__)
 
 dispatcher = Dispatcher()
 SCHEMA_DIR = os.path.join(os.path.dirname(__file__), "schema")
@@ -56,7 +58,6 @@ async def get_schema(tool_name: str):
 # ---------------------------------------------------------------------
 # Canvas API Endpoints
 # ---------------------------------------------------------------------
-
 @app.post("/canvas")
 async def canvas_action(request: Request, payload: dict):
     require_api_key_header(request.headers)
@@ -65,13 +66,19 @@ async def canvas_action(request: Request, payload: dict):
     action = payload.get("action")
     params = payload.get("params", {})
     if not action:
+        logger.warning("Canvas action missing 'action' field")
         raise HTTPException(status_code=400, detail="Missing 'action' field")
 
     try:
         result = dispatcher.dispatch(action, params)
+        logger.info("Executed canvas action: %s", action)
         return JSONResponse(content={"status": "ok", "result": result})
+    except HTTPException as e:
+        logger.warning("[Canvas API] %s (HTTP %s)", e.detail, e.status_code)
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Canvas dispatch error for action: %s", action)
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 @app.post("/canvas/create")
 async def create_canvas(request: Request, payload: dict):
@@ -84,12 +91,14 @@ async def create_canvas(request: Request, payload: dict):
     color = payload.get("color", "#000000")
 
     canvas = Canvas(name, width, height, color)
+    logger.info("Created new canvas: %s (%s) %s %sx%s", name, canvas.id, color, width, height)
     return {
         "status": "created",
         "canvas_id": canvas.id,
         "human_id": canvas.human_id,
         "metadata": canvas.__dict__
     }
+
 
 @app.get("/object/{canvas_id}")
 async def get_canvas_metadata(canvas_id: str):
@@ -99,8 +108,11 @@ async def get_canvas_metadata(canvas_id: str):
     cur.execute("SELECT * FROM canvases WHERE id = ?", (resolved_id,))
     row = cur.fetchone()
     if not row:
+        logger.warning("Metadata fetch failed: canvas %s not found", resolved_id)
         raise HTTPException(status_code=404, detail="Canvas not found")
+    logger.debug("Fetched metadata for canvas %s", resolved_id)
     return dict(row)
+
 
 
 @app.get("/object/{canvas_id}/history")
@@ -149,7 +161,6 @@ async def load_canvas_log(request: Request, canvas_id: str, payload: dict):
 # ---------------------------------------------------------------------
 # API Key Validation
 # ---------------------------------------------------------------------
-
 def require_api_key(request: Request):
     if not CONFIG["AUTH"].get("require_api_key", True):
         return
@@ -158,9 +169,12 @@ def require_api_key(request: Request):
         with open(CONFIG["AUTH"]["keys_file"], "r") as f:
             valid_keys = set(json.load(f))
         if key not in valid_keys:
+            logger.warning("Rejected request with invalid API key: %s", key)
             raise HTTPException(status_code=403, detail="Invalid API key")
     except FileNotFoundError:
+        logger.error("API key file not found at %s", CONFIG["AUTH"]["keys_file"])
         raise HTTPException(status_code=500, detail="API key store not found")
+
 
 # ---------------------------------------------------------------------
 # Entrypoint
@@ -172,11 +186,12 @@ if __name__ == "__main__":
     import asyncio
     from uvicorn import Config, Server
 
+    logger.info("Starting Crucial API server...")
     config = Config("crucial.server:app", host="0.0.0.0", port=8000, reload=True)
     server = Server(config)
 
     try:
         asyncio.run(server.serve())
     except KeyboardInterrupt:
-        print("Shutdown signal received. Cleaning up Crucial server.")
+        logger.info("Shutdown signal received. Cleaning up Crucial server.")
 
