@@ -2,8 +2,12 @@
 # Description: Central configuration for Crucial platform
 # Author: Ms. White
 # Created: 2025-05-06
+# Modified: 2025-05-06 16:30:26
 
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 CONFIG = {
     "SERVER": {

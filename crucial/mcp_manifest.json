@@ -1,0 +1,21 @@
+{
+    "name": "Crucial",
+    "version": "0.1.0",
+    "description": "Crucial is a modular visual rendering engine for LLMs, offering MCP-compatible canvas drawing tools for creative and data visualization purposes.",
+    "protocol": "mcp://1.0",
+    "base_url": "http://localhost:8000",
+    "registry_url": "http://localhost:8000/mcp/registry",
+    "tools_endpoint": "http://localhost:8000/canvas",
+    "schema_url_template": "http://localhost:8000/schema/{tool_name}.json",
+    "object_url_template": "http://localhost:8000/object/{id}",
+    "tags": [
+        "drawing",
+        "rendering",
+        "canvas",
+        "MCP",
+        "LLM-tools",
+        "visualization"
+    ],
+    "author": "Wadih Khairallah",
+    "license": "MIT"
+}

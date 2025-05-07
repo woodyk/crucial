@@ -1,91 +1,148 @@
+// File: app.js
+// Author: Crucial
+// Description: Real-time animated frontend renderer for Crucial Canvas
+// Created: 2025-05-06
+// Modified: 2025-05-06 19:59:30
+
 import { config } from './config.js';
+
+const BASE = config.apiBase || "";
 
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
-const canvasNameDiv = document.createElement('div');
-document.body.appendChild(canvasNameDiv);
+const canvasNameDiv = document.getElementById('canvas-name');
+let canvasId = new URLSearchParams(window.location.search).get('id') ||
+               window.location.pathname.split('/').pop();
 
-let canvasId = new URLSearchParams(window.location.search).get('id');
-if (!canvasId) {
-    canvasId = window.location.pathname.split('/').pop();
-}
-if (!canvasId) throw new Error("No canvas id");
-
-canvasNameDiv.style.position = 'absolute';
-canvasNameDiv.style[config.canvasName.position.replace('-', '')] = '10px';
-canvasNameDiv.style.color = config.canvasName.color;
-canvasNameDiv.style.font = config.canvasName.font;
-canvasNameDiv.style.opacity = 0;
+if (!canvasId) throw new Error("No canvas ID specified in URL");
 
 let history = [];
 let renderedIndex = 0;
 let isFramed = false;
+
+// =================== Utility =======================
+
+function hexToRgb(hex) {
+    const parsed = hex.startsWith('#') ? hex.slice(1) : hex;
+    const bigint = parseInt(parsed, 16);
+    return [(bigint >> 16) & 255, (bigint >> 8) & 255, bigint & 255];
+}
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function fadeInBackground(color, duration) {
+    const [r, g, b] = hexToRgb(color);
+    let step = 0;
+    const steps = 30;
+    const interval = duration / steps;
+
+    const id = setInterval(() => {
+        let alpha = (++step) / steps;
+        ctx.fillStyle = `rgba(${r},${g},${b},${alpha})`;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        if (step >= steps) clearInterval(id);
+    }, interval);
+}
+
+function showCanvasName(name) {
+    if (!config.canvasName.show) return;
+    canvasNameDiv.textContent = name;
+    canvasNameDiv.style.font = config.canvasName.font;
+    canvasNameDiv.style.color = config.canvasName.color;
+    canvasNameDiv.style.opacity = 0;
+    canvasNameDiv.style.transition = `opacity ${config.canvasName.fadeDuration}ms ease`;
+    setTimeout(() => {
+        canvasNameDiv.style.opacity = 1;
+    }, config.backgroundFadeDuration);
+}
+
+// =================== Boot =======================
 
 function createFrame(width, height) {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     document.body.style.background = `url(${config.transparencyGrid.backgroundImage})`;
     document.body.style.backgroundSize = config.transparencyGrid.backgroundSize;
-
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
 
-function fadeInBackground(color, duration) {
-    let step = 0;
-    const steps = 30;
-    const interval = duration / steps;
-    const [r, g, b] = hexToRgb(color);
-    const intervalId = setInterval(() => {
-        let alpha = (++step) / steps;
-        ctx.fillStyle = `rgba(${r},${g},${b},${alpha})`;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        if (step >= steps) clearInterval(intervalId);
-    }, interval);
-}
+// =================== Core Loop =======================
 
-function showCanvasName(name) {
-    if (!config.canvasName.show) return;
-    canvasNameDiv.innerText = name;
-    canvasNameDiv.style.transition = `opacity ${config.canvasName.fadeDuration}ms ease`;
-    canvasNameDiv.style.opacity = 1;
-}
-
-// ====================== Render Registry =======================
-
-const renderRegistry = {
-    'canvas_create': renderCreate,
-    'canvas_draw_line': renderDrawLine,
-    'canvas_draw_circle': renderCircle,
-    'canvas_draw_rectangle': renderRectangle,
-    'canvas_draw_text': renderText,
-    'canvas_draw_point': renderPoint,
-    'canvas_draw_arc': renderArc,
-    'canvas_draw_polygon': renderPolygon,
-    'canvas_clear': renderClear,
-    'canvas_draw_bezier': renderBezier,
-    'canvas_graph_bar': renderGraphBar,
-    'canvas_graph_heatmap': renderGraphHeatmap,
-    'canvas_graph_histogram': renderGraphHistogram,
-    'canvas_graph_line': renderGraphLine,
-    'canvas_graph_pie': renderGraphPie,
-    'canvas_graph_scatter': renderGraphScatter,
+let lastActionCount = 0;
+let idlePolls = 0;
 
 
-};
+async function pollCanvasHistory() {
+    const res = await fetch(`${BASE}/object/${canvasId}/history`);
+    if (!res.ok) return;
 
-// ====================== Render Functions ======================
+    const actions = await res.json();
 
-function renderCreate(entry) {
-    const { name, x, y, color } = entry.params;
-    if (!isFramed) {
-        createFrame(x, y);
-        isFramed = true;
-        fadeInBackground(color, config.backgroundFadeDuration);
-        setTimeout(() => showCanvasName(name), config.backgroundFadeDuration);
+    // Add only new entries
+    if (actions.length > renderedIndex) {
+        history = actions;
+
+        while (renderedIndex < history.length) {
+            await renderNextAction();
+        }
     }
 }
 
-function renderDrawLine(entry) {
+
+async function renderNextAction() {
+    if (renderedIndex >= history.length) return;
+    const entry = history[renderedIndex++];
+    const fn = renderRegistry[entry.action];
+    if (fn) await fn(entry);
+    else console.warn("Unknown action:", entry.action);
+}
+
+function startPolling() {
+    window.pollIntervalId = setInterval(pollCanvasHistory, config.pollingIntervalMs);
+}
+
+window.addEventListener("load", async () => {
+    const meta = await loadCanvasMetadata(canvasId);
+    if (!meta) return;
+    showCanvasName(meta.name);
+    startPolling();
+});
+
+// =================== Render Registry =======================
+const renderRegistry = {
+    'canvas_create': renderCreate,
+    'canvas_draw_line': renderDrawLine,
+    'canvas_draw_circle': renderDrawCircle,
+    'canvas_draw_rectangle': renderDrawRectangle,
+    'canvas_draw_text': renderDrawText,
+    'canvas_draw_point': renderDrawPoint,
+    'canvas_draw_arc': renderDrawArc,
+    'canvas_draw_polygon': renderDrawPolygon,
+    'canvas_draw_bezier': renderDrawBezier,
+    'canvas_clear': renderClear,
+    'canvas_graph_bar': renderGraphBar,
+    'canvas_graph_pie': renderGraphPie,
+    'canvas_graph_line': renderGraphLine,
+    'canvas_graph_scatter': renderGraphScatter,
+    'canvas_graph_histogram': renderGraphHistogram,
+    'canvas_graph_heatmap': renderGraphHeatmap,
+    'canvas_render_threejs': renderThreejs
+};
+
+// ========== Shape Primitives ==========
+
+async function renderCreate(entry) {
+    const { x, y, color } = entry.params;
+    if (!isFramed) {
+        createFrame(x, y);
+        fadeInBackground(color, config.backgroundFadeDuration);
+        isFramed = true;
+    }
+}
+
+async function renderDrawLine(entry) {
     const { start_x, start_y, end_x, end_y, color, width } = entry.params;
     ctx.strokeStyle = color;
     ctx.lineWidth = width;
@@ -95,34 +152,38 @@ function renderDrawLine(entry) {
     ctx.stroke();
 }
 
-function renderCircle(entry) {
+async function renderDrawCircle(entry) {
     const { center_x, center_y, radius, color, fill } = entry.params;
     ctx.beginPath();
     ctx.arc(center_x, center_y, radius, 0, 2 * Math.PI);
     ctx.strokeStyle = color;
-    ctx.fillStyle = fill;
-    ctx.fill();
     ctx.stroke();
+    if (fill && fill !== "none") {
+        ctx.fillStyle = fill;
+        ctx.fill();
+    }
 }
 
-function renderRectangle(entry) {
+async function renderDrawRectangle(entry) {
     const { x, y, width, height, color, fill } = entry.params;
     ctx.beginPath();
     ctx.rect(x, y, width, height);
     ctx.strokeStyle = color;
-    ctx.fillStyle = fill;
-    ctx.fill();
     ctx.stroke();
+    if (fill && fill !== "none") {
+        ctx.fillStyle = fill;
+        ctx.fill();
+    }
 }
 
-function renderText(entry) {
+async function renderDrawText(entry) {
     const { text, x, y, font, size, color } = entry.params;
     ctx.font = `${size}px ${font}`;
     ctx.fillStyle = color;
     ctx.fillText(text, x, y);
 }
 
-function renderPoint(entry) {
+async function renderDrawPoint(entry) {
     const { x, y, color, radius } = entry.params;
     ctx.beginPath();
     ctx.arc(x, y, radius, 0, 2 * Math.PI);
@@ -130,388 +191,239 @@ function renderPoint(entry) {
     ctx.fill();
 }
 
-
-function animateCircle(center_x, center_y, radius, color, fill, duration) {
-    let step = 0;
-    const steps = 60;
-    const ctx2 = ctx;
-    const angleStep = (2 * Math.PI) / steps;
-    const brushRadius = Math.max(2, radius * 0.05);
-    const interval = duration / steps;
-
-    let drawPoints = [];
-
-    for (let i = 0; i <= steps; i++) {
-        const angle = i * angleStep;
-        const x = center_x + radius * Math.cos(angle);
-        const y = center_y + radius * Math.sin(angle);
-        drawPoints.push({x, y});
-    }
-
-    ctx2.beginPath();
-    ctx2.moveTo(drawPoints[0].x, drawPoints[0].y);
-
-    const intervalId = setInterval(() => {
-        if (step >= drawPoints.length) {
-            if (fill) {
-                ctx2.fillStyle = fill;
-                ctx2.fill();
-            }
-            ctx2.strokeStyle = color;
-            ctx2.stroke();
-            clearInterval(intervalId);
-            return;
-        }
-
-        const pt = drawPoints[step];
-        ctx2.lineTo(pt.x, pt.y);
-
-        // draw ghost brush
-        if (config.drawing.ghostBrushEnabled) {
-            ctx2.save();
-            ctx2.beginPath();
-            ctx2.arc(pt.x, pt.y, brushRadius, 0, 2 * Math.PI);
-            ctx2.strokeStyle = config.drawing.brushColor;
-            ctx2.stroke();
-            ctx2.restore();
-        }
-
-        step++;
-    }, interval);
-}
-
-function animateRectangle(x, y, width, height, color, fill, duration) {
-    const ctx2 = ctx;
-    const steps = 100;
-    const interval = duration / steps;
-    const segments = [
-        { x1: x, y1: y, x2: x + width, y2: y },               // top
-        { x1: x + width, y1: y, x2: x + width, y2: y + height }, // right
-        { x1: x + width, y1: y + height, x2: x, y2: y + height }, // bottom
-        { x1: x, y1: y + height, x2: x, y2: y }                // left
-    ];
-
-    let currentSeg = 0;
-    let t = 0;
-
-    ctx2.beginPath();
-    ctx2.moveTo(x, y);
-
-    const intervalId = setInterval(() => {
-        if (currentSeg >= segments.length) {
-            if (fill) {
-                ctx2.fillStyle = fill;
-                ctx2.fill();
-            }
-            ctx2.strokeStyle = color;
-            ctx2.stroke();
-            clearInterval(intervalId);
-            return;
-        }
-
-        const seg = segments[currentSeg];
-        const x = seg.x1 + (seg.x2 - seg.x1) * t;
-        const y = seg.y1 + (seg.y2 - seg.y1) * t;
-
-        ctx2.lineTo(x, y);
-
-        if (config.drawing.ghostBrushEnabled) {
-            ctx2.save();
-            ctx2.beginPath();
-            ctx2.arc(x, y, 3, 0, 2 * Math.PI);
-            ctx2.strokeStyle = config.drawing.brushColor;
-            ctx2.stroke();
-            ctx2.restore();
-        }
-
-        t += 1 / (steps / 4); // divide total steps among 4 edges
-        if (t >= 1) {
-            t = 0;
-            currentSeg++;
-        }
-    }, interval);
-}
-
-function renderCircle(entry) {
-    const { center_x, center_y, radius, color, fill } = entry.params;
-    const dur = 1000 * config.drawing.speed;
-    animateCircle(center_x, center_y, radius, color, fill, dur);
-}
-
-function renderRectangle(entry) {
-    const { x, y, width, height, color, fill } = entry.params;
-    const dur = 1000 * config.drawing.speed;
-    animateRectangle(x, y, width, height, color, fill, dur);
-}
-
-
-function animateArc(center_x, center_y, radius, start_angle, end_angle, color, width, duration) {
-    let step = 0;
-    const steps = 60;
-    const ctx2 = ctx;
-    const angleStep = (end_angle - start_angle) / steps;
-    const brushRadius = width;
-    const interval = duration / steps;
-
-    ctx2.beginPath();
-    const sx = center_x + radius * Math.cos(start_angle);
-    const sy = center_y + radius * Math.sin(start_angle);
-    ctx2.moveTo(sx, sy);
-
-    const intervalId = setInterval(() => {
-        if (step > steps) {
-            ctx2.strokeStyle = color;
-            ctx2.lineWidth = width;
-            ctx2.stroke();
-            clearInterval(intervalId);
-            return;
-        }
-
-        const angle = start_angle + angleStep * step;
-        const x = center_x + radius * Math.cos(angle);
-        const y = center_y + radius * Math.sin(angle);
-        ctx2.lineTo(x, y);
-
-        if (config.drawing.ghostBrushEnabled) {
-            ctx2.save();
-            ctx2.beginPath();
-            ctx2.arc(x, y, brushRadius, 0, 2 * Math.PI);
-            ctx2.strokeStyle = config.drawing.brushColor;
-            ctx2.stroke();
-            ctx2.restore();
-        }
-
-        step++;
-    }, interval);
-}
-
-function animatePolygon(points, color, fill, duration) {
-    const ctx2 = ctx;
-    let step = 0;
-    const totalSegments = points.length;
-    const interval = duration / totalSegments;
-    let current = 0;
-
-    ctx2.beginPath();
-    ctx2.moveTo(points[0][0], points[0][1]);
-
-    const intervalId = setInterval(() => {
-        if (current >= totalSegments) {
-            if (fill) {
-                ctx2.fillStyle = fill;
-                ctx2.fill();
-            }
-            ctx2.strokeStyle = color;
-            ctx2.stroke();
-            clearInterval(intervalId);
-            return;
-        }
-
-        const [x, y] = points[current];
-        ctx2.lineTo(x, y);
-
-        if (config.drawing.ghostBrushEnabled) {
-            ctx2.save();
-            ctx2.beginPath();
-            ctx2.arc(x, y, 3, 0, 2 * Math.PI);
-            ctx2.strokeStyle = config.drawing.brushColor;
-            ctx2.stroke();
-            ctx2.restore();
-        }
-
-        current++;
-    }, interval);
-}
-
-function renderArc(entry) {
+async function renderDrawArc(entry) {
     const { center_x, center_y, radius, start_angle, end_angle, color, width } = entry.params;
-    const dur = 1000 * config.drawing.speed;
-    animateArc(center_x, center_y, radius, start_angle, end_angle, color, width, dur);
+    ctx.beginPath();
+    ctx.arc(center_x, center_y, radius, start_angle, end_angle);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.stroke();
 }
 
-function renderPolygon(entry) {
+async function renderDrawPolygon(entry) {
     const { points, color, fill } = entry.params;
-    const dur = 1000 * config.drawing.speed;
-    animatePolygon(points, color, fill, dur);
-}
-
-function renderClear(entry) {
-    ctx.save();
-    ctx.globalAlpha = 1.0;
-    ctx.fillStyle = "#ffffff";
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.restore();
-}
-
-function getBezierPoint(t, points) {
-    const n = points.length - 1;
-    let x = 0, y = 0;
-    for (let i = 0; i <= n; i++) {
-        const bin = binomial(n, i);
-        const pow1 = Math.pow(1 - t, n - i);
-        const pow2 = Math.pow(t, i);
-        x += bin * pow1 * pow2 * points[i][0];
-        y += bin * pow1 * pow2 * points[i][1];
+    if (!points.length) return;
+    ctx.beginPath();
+    ctx.moveTo(points[0][0], points[0][1]);
+    for (let i = 1; i < points.length; i++) {
+        ctx.lineTo(points[i][0], points[i][1]);
     }
-    return { x, y };
-}
-
-function binomial(n, k) {
-    let res = 1;
-    for (let i = 0; i < k; ++i) {
-        res *= (n - i) / (i + 1);
+    ctx.closePath();
+    ctx.strokeStyle = color;
+    ctx.stroke();
+    if (fill && fill !== "none") {
+        ctx.fillStyle = fill;
+        ctx.fill();
     }
-    return res;
 }
 
-function animateBezier(control_points, color, width, duration) {
-    const ctx2 = ctx;
-    ctx2.beginPath();
-    const steps = 100;
-    const interval = duration / steps;
-    let t = 0;
-    let step = 0;
-
-    ctx2.moveTo(control_points[0][0], control_points[0][1]);
-
-    const intervalId = setInterval(() => {
-        if (step > steps) {
-            ctx2.strokeStyle = color;
-            ctx2.lineWidth = width;
-            ctx2.stroke();
-            clearInterval(intervalId);
-            return;
-        }
-
-        const { x, y } = getBezierPoint(t, control_points);
-        ctx2.lineTo(x, y);
-
-        if (config.drawing.ghostBrushEnabled) {
-            ctx2.save();
-            ctx2.beginPath();
-            ctx2.arc(x, y, 2, 0, 2 * Math.PI);
-            ctx2.strokeStyle = config.drawing.brushColor;
-            ctx2.stroke();
-            ctx2.restore();
-        }
-
-        t += 1 / steps;
-        step++;
-    }, interval);
-}
-
-function renderBezier(entry) {
+async function renderDrawBezier(entry) {
     const { control_points, color, width } = entry.params;
-    const dur = 1000 * config.drawing.speed;
-    animateBezier(control_points, color, width, dur);
+    if (control_points.length < 4) return;
+    ctx.beginPath();
+    ctx.moveTo(control_points[0][0], control_points[0][1]);
+    ctx.bezierCurveTo(
+        control_points[1][0], control_points[1][1],
+        control_points[2][0], control_points[2][1],
+        control_points[3][0], control_points[3][1]
+    );
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.stroke();
 }
 
+async function renderClear(entry) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
 
-function renderGraphBar(entry) {
-    const { data, position, colors } = entry.params;
-    const ctx2 = ctx;
+async function renderGraphBar(entry) {
+    console.warn("renderGraphBar is not implemented");
+}
+
+async function renderGraphPie(entry) {
+    const { data, center_x, center_y, radius } = entry.params;
+    const total = data.reduce((sum, item) => sum + item.value, 0);
+    const colors = config.graph.pie.colors || [];
+    const labelFont = config.graph.pie.labelFont || "12px sans-serif";
+    const labelColor = config.graph.pie.labelColor || "#ffffff";
+
+    let startAngle = 0;
+
+    for (let i = 0; i < data.length; i++) {
+        const item = data[i];
+        const sliceAngle = (item.value / total) * 2 * Math.PI;
+        const endAngle = startAngle + sliceAngle;
+        const color = colors[i % colors.length];
+
+        ctx.beginPath();
+        ctx.moveTo(center_x, center_y);
+        ctx.arc(center_x, center_y, radius, startAngle, endAngle);
+        ctx.closePath();
+        ctx.fillStyle = color;
+        ctx.fill();
+
+        const midAngle = (startAngle + endAngle) / 2;
+        const labelX = center_x + (radius * 0.6) * Math.cos(midAngle);
+        const labelY = center_y + (radius * 0.6) * Math.sin(midAngle);
+        ctx.fillStyle = labelColor;
+        ctx.font = labelFont;
+        ctx.fillText(item.label, labelX, labelY);
+
+        await sleep(300 * config.drawing.speed);
+        startAngle = endAngle;
+    }
+}
+
+async function renderGraphScatter(entry) {
+    const { points, color } = entry.params;
+    const scatterColor = color || config.graph.scatter.defaultColor || "#ffffff";
+
+    for (let i = 0; i < points.length; i++) {
+        const [x, y] = points[i];
+        ctx.beginPath();
+        ctx.arc(x, y, 4, 0, 2 * Math.PI);
+        ctx.fillStyle = scatterColor;
+        ctx.fill();
+        await sleep(60 * config.drawing.speed);
+    }
+}
+
+async function renderGraphLine(entry) {
+    const { data, axis_config, color } = entry.params;
+    if (data.length < 2) return;
+
+    ctx.strokeStyle = color || config.graph.line.defaultColor || "#00ffff";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(data[0].x, data[0].y);
+
+    for (let i = 1; i < data.length; i++) {
+        ctx.lineTo(data[i].x, data[i].y);
+        ctx.stroke();
+        await sleep(80 * config.drawing.speed);
+    }
+}
+
+async function renderGraphHistogram(entry) {
+    const { values, bins = 10, normalize = false } = entry.params;
+    if (!values.length) return;
+
     const canvasWidth = canvas.width;
     const canvasHeight = canvas.height;
+    const barColor = config.graph.histogram.barColor || "#ff69b4";
 
-    const margin = 50;
-    const barGap = 20;
-    const maxBarHeight = canvasHeight - 2 * margin;
-    const barWidth = (canvasWidth - 2 * margin - barGap * (data.length - 1)) / data.length;
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const binWidth = (max - min) / bins;
+    const histogram = Array(bins).fill(0);
 
-    const maxValue = Math.max(...data.map(d => d.value));
-    let step = 0;
-
-    function drawBar(index) {
-        if (index >= data.length) return;
-
-        const value = data[index].value;
-        const label = data[index].label;
-        const height = (value / maxValue) * maxBarHeight;
-        const x = margin + index * (barWidth + barGap);
-        const y = canvasHeight - margin - height;
-
-        let currentHeight = 0;
-        const steps = 30;
-        const increment = height / steps;
-        const interval = 800 / steps;
-
-        const color = (colors && colors[index]) || config.graph.bar.defaultColor;
-
-        const animId = setInterval(() => {
-            ctx2.fillStyle = color;
-            ctx2.fillRect(x, canvasHeight - margin - currentHeight, barWidth, currentHeight);
-
-            ctx2.fillStyle = config.graph.bar.labelColor;
-            ctx2.font = config.graph.bar.labelFont;
-            ctx2.fillText(label, x, canvasHeight - margin + 15);
-
-            currentHeight += increment;
-            if (currentHeight >= height) {
-                clearInterval(animId);
-                drawBar(index + 1);
-            }
-        }, interval);
+    for (let val of values) {
+        const index = Math.min(bins - 1, Math.floor((val - min) / binWidth));
+        histogram[index]++;
     }
 
-    drawBar(0);
+    if (normalize) {
+        const total = histogram.reduce((sum, x) => sum + x, 0);
+        for (let i = 0; i < bins; i++) histogram[i] /= total;
+    }
+
+    const maxCount = Math.max(...histogram);
+    const barWidth = canvasWidth / bins;
+
+    for (let i = 0; i < bins; i++) {
+        const height = (histogram[i] / maxCount) * canvasHeight * 0.8;
+        const x = i * barWidth;
+        const y = canvasHeight - height;
+        ctx.fillStyle = barColor;
+        ctx.fillRect(x, y, barWidth - 2, height);
+        await sleep(80 * config.drawing.speed);
+    }
 }
 
-// ====================== Graph Render Placeholders ======================
+async function renderGraphHeatmap(entry) {
+    const { matrix, labels = [], color_map = "viridis" } = entry.params;
+    if (!matrix.length || !matrix[0].length) return;
 
-// TODO: Implement canvas_graph_bar rendering (animated bar chart)
-function renderGraphBar(entry) {
-    console.warn("canvas_graph_bar not yet implemented");
+    const rows = matrix.length;
+    const cols = matrix[0].length;
+    const cellWidth = canvas.width / cols;
+    const cellHeight = canvas.height / rows;
+
+    const flat = matrix.flat();
+    const min = Math.min(...flat);
+    const max = Math.max(...flat);
+
+    function getColor(value) {
+        const ratio = (value - min) / (max - min);
+        const gray = Math.round(ratio * 255);
+        return `rgb(${gray},${gray},${gray})`;
+    }
+
+    for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+            const val = matrix[y][x];
+            ctx.fillStyle = getColor(val);
+            ctx.fillRect(x * cellWidth, y * cellHeight, cellWidth, cellHeight);
+        }
+        await sleep(60 * config.drawing.speed);
+    }
 }
 
-// TODO: Implement canvas_graph_heatmap rendering (cell matrix color fill)
-function renderGraphHeatmap(entry) {
-    console.warn("canvas_graph_heatmap not yet implemented");
+
+async function renderThreejs(entry) {
+    if (window.pollIntervalId) clearInterval(window.pollIntervalId);
+
+    // Remove only the old canvas and controls — keep canvas-name
+    document.getElementById("canvas")?.remove();
+    document.getElementById("controls")?.remove();
+    document.getElementById("error-banner")?.remove();
+
+    // Overlay canvas name (if still hidden)
+    const meta = await loadCanvasMetadata(canvasId);
+    if (meta && config.canvasName.show) {
+        const nameDiv = document.getElementById("canvas-name");
+        nameDiv.textContent = meta.name;
+        nameDiv.style.font = config.canvasName.font;
+        nameDiv.style.color = config.canvasName.color;
+        nameDiv.style.opacity = 0;
+        nameDiv.style.transition = `opacity ${config.canvasName.fadeDuration}ms ease`;
+        setTimeout(() => {
+            nameDiv.style.opacity = 1;
+        }, config.backgroundFadeDuration);
+    }
+
+    // Create iframe for embedded Three.js script
+    const iframe = document.createElement("iframe");
+    iframe.style.zIndex = "10"; 
+    iframe.style.position = "absolute";
+    iframe.style.top = 0;
+    iframe.style.left = 0;
+    iframe.style.width = "100vw";
+    iframe.style.height = "100vh";
+    iframe.style.border = "none";
+    iframe.style.zIndex = "999";
+    iframe.allow = "fullscreen";
+
+    iframe.srcdoc = entry.params.script;
+
+    document.body.appendChild(iframe);
+    renderedIndex = Number.MAX_SAFE_INTEGER;
 }
 
-// TODO: Implement canvas_graph_histogram rendering (value bin buckets)
-function renderGraphHistogram(entry) {
-    console.warn("canvas_graph_histogram not yet implemented");
+
+async function loadCanvasMetadata(id) {
+    const res = await fetch(`${BASE}/object/${id}`);
+    if (res.status === 404) {
+        displayCanvasError("This canvas ID does not exist.");
+        return null;
+    }
+    return res.ok ? res.json() : null;
 }
 
-// TODO: Implement canvas_graph_line rendering (animated polyline over data)
-function renderGraphLine(entry) {
-    console.warn("canvas_graph_line not yet implemented");
+function displayCanvasError(message) {
+    if (window.pollIntervalId) clearInterval(window.pollIntervalId);
+    const banner = document.getElementById('error-banner');
+    banner.textContent = message;
+    banner.style.display = "block";
 }
 
-// TODO: Implement canvas_graph_pie rendering (circular sector fill by label/value)
-function renderGraphPie(entry) {
-    console.warn("canvas_graph_pie not yet implemented");
-}
-
-// TODO: Implement canvas_graph_scatter rendering (dots in X/Y coordinate space)
-function renderGraphScatter(entry) {
-    console.warn("canvas_graph_scatter not yet implemented");
-}
-// ====================== Dispatcher & Polling ======================
-
-function renderNextAction() {
-    if (renderedIndex >= history.length) return;
-    const entry = history[renderedIndex++];
-    const fn = renderRegistry[entry.action];
-    if (fn) fn(entry);
-    else console.warn("Unknown action:", entry.action);
-}
-
-function hexToRgb(hex) {
-    const parsed = hex.startsWith('#') ? hex.slice(1) : hex;
-    const bigint = parseInt(parsed, 16);
-    return [(bigint >> 16) & 255, (bigint >> 8) & 255, bigint & 255];
-}
-
-function pollHistory() {
-    fetch(`/object/${canvasId}/history`)
-        .then(r => r.json())
-        .then(actions => {
-            if (actions.length > history.length) {
-                history = actions;
-                renderNextAction(); // play one frame per poll tick
-            }
-        });
-}
-
-setInterval(pollHistory, config.pollIntervalMs);

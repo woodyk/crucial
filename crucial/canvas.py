@@ -1,356 +1,185 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
 # File: canvas.py
-# Description: Crucial Canvas class – core rendering and state management
+# Author: Wadih Khairallah
+# Description: 
+# Created: 2025-05-06 17:30:59
+# Modified: 2025-05-06 22:29:23
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
+# File: canvas.py
+# Description: Crucial Canvas class with DB-integrated action logging
 # Author: Ms. White
-# Created: 2025-05-06
+# Updated: 2025-05-07
 
+import json
 import uuid
+from datetime import datetime
 from crucial.config import CONFIG
 from crucial.db import get_db_connection
-
-from datetime import datetime
+from crucial.utils.human_id import generate_human_id
 
 class Canvas:
-    """
-    Core engine class representing a single Crucial canvas.
-    Maintains draw state, action log, and rendering parameters.
-    """
-
     def __init__(self, name, width, height, bg_color):
-        """
-        Initialize a new canvas instance.
-        """
         self.id = str(uuid.uuid4())
         self.name = name
         self.width = width
         self.height = height
         self.bg_color = bg_color
         self.created_at = datetime.utcnow().isoformat()
-        self.actions = []
+        self._init_db()
 
-    def to_metadata(self):
-        """
-        Return dictionary representation of canvas metadata.
-        """
-        return {
-            "id": self.id,
-            "name": self.name,
-            "width": self.width,
-            "height": self.height,
-            "bg_color": self.bg_color,
-            "created_at": self.created_at
-        }
+    def _init_db(self):
+        conn = get_db_connection()
+        cur = conn.cursor()
+        self.human_id = generate_human_id()
+        cur.execute(
+            "INSERT INTO canvases (id, human_id, name, width, height, background, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (self.id, self.human_id, self.name, self.width, self.height, self.bg_color, self.created_at)
+        )
+        conn.commit()
 
-    def log_action(self, action_type, parameters):
-        """
-        Append an action to the canvas history.
-        """
-        self.actions.append({
-            "timestamp": datetime.utcnow().isoformat(),
-            "action": action_type,
-            "params": parameters
-        })
+    def _store_action(self, action_type, parameters, overwrite=False):
+        conn = get_db_connection()
+        cur = conn.cursor()
+        if overwrite:
+            cur.execute("DELETE FROM actions WHERE canvas_id = ?", (self.id,))
+        timestamp = datetime.utcnow().isoformat()
+        cur.execute(
+            "INSERT INTO actions (canvas_id, timestamp, action, params) VALUES (?, ?, ?, ?)",
+            (self.id, timestamp, action_type, json.dumps(parameters))
+        )
+        conn.commit()
 
-    def get_history(self):
-        from json import loads
-        """
-        Return full list of actions for replay or export.
-        """
-        return self.actions
 
-    def clear(self):
-        """
-        Clear all drawn elements from the canvas (resets actions).
-        """
-        self.actions.append({
-            "timestamp": datetime.utcnow().isoformat(),
-            "action": "clear",
-            "params": {}
-        })
+    def _mark_type(self, type_name):
+        conn = get_db_connection()
+        cur = conn.cursor()
 
-    def draw_line(self, start_x, start_y, end_x, end_y, color, width):
-        """
-        Draw a straight line on the canvas.
-        """
-        self.log_action("draw_line", {
-            "start_x": start_x,
-            "start_y": start_y,
-            "end_x": end_x,
-            "end_y": end_y,
-            "color": color,
-            "width": width
-        })
+        # Check if 'canvas_type' column already exists
+        cur.execute("PRAGMA table_info(canvases)")
+        columns = {row[1] for row in cur.fetchall()}
+        if "canvas_type" not in columns:
+            cur.execute("ALTER TABLE canvases ADD COLUMN canvas_type TEXT")
 
-    def draw_circle(self, center_x, center_y, radius, color, fill):
-        """
-        Draw a circle at the given center point.
-        """
-        self.log_action("draw_circle", {
-            "center_x": center_x,
-            "center_y": center_y,
-            "radius": radius,
-            "color": color,
-            "fill": fill
-        })
+        cur.execute("UPDATE canvases SET canvas_type = ? WHERE id = ?", (type_name, self.id))
+        conn.commit()
 
-    def draw_rectangle(self, x, y, width, height, color, fill):
-        """
-        Draw a rectangle or square.
-        """
-        self.log_action("draw_rectangle", {
-            "x": x,
-            "y": y,
-            "width": width,
-            "height": height,
-            "color": color,
-            "fill": fill
-        })
 
-    def draw_text(self, text, x, y, font, size, color):
-        """
-        Render text at a given position.
-        """
-        self.log_action("draw_text", {
-            "text": text,
-            "x": x,
-            "y": y,
-            "font": font,
-            "size": size,
-            "color": color
-        })
+    # Core drawing methods
+    def clear(self, object_uri):
+        self._store_action("canvas_clear", {"object_uri": object_uri})
 
-    def draw_arc(self, center_x, center_y, radius, start_angle, end_angle, color, width):
-        """
-        Draw an arc segment of a circle.
-        """
-        self.log_action("draw_arc", {
-            "center_x": center_x,
-            "center_y": center_y,
-            "radius": radius,
-            "start_angle": start_angle,
-            "end_angle": end_angle,
-            "color": color,
-            "width": width
-        })
+    def draw_line(self, **kwargs):
+        self._store_action("canvas_draw_line", kwargs)
 
-    def draw_bezier(self, control_points, color, width):
-        """
-        Draw a Bezier curve using control points.
-        """
-        self.log_action("draw_bezier", {
-            "control_points": control_points,
-            "color": color,
-            "width": width
-        })
+    def draw_circle(self, **kwargs):
+        self._store_action("canvas_draw_circle", kwargs)
 
-    def draw_polygon(self, points, color, fill):
-        """
-        Draw a closed polygon with given vertices.
-        """
-        self.log_action("draw_polygon", {
-            "points": points,
-            "color": color,
-            "fill": fill
-        })
+    def draw_rectangle(self, **kwargs):
+        self._store_action("canvas_draw_rectangle", kwargs)
 
-    def draw_point(self, x, y, color, radius):
-        """
-        Plot a point (or small circle) on the canvas.
-        """
-        self.log_action("draw_point", {
-            "x": x,
-            "y": y,
-            "color": color,
-            "radius": radius
-        })
+    def draw_text(self, **kwargs):
+        self._store_action("canvas_draw_text", kwargs)
 
-    def set_background(self, color):
-        """
-        Change the background color of the canvas.
-        """
-        self.bg_color = color
-        self.log_action("set_background", {
-            "color": color
-        })
+    def draw_arc(self, **kwargs):
+        self._store_action("canvas_draw_arc", kwargs)
 
-    def translate(self, dx, dy):
-        """
-        Translate the canvas coordinate space.
-        """
-        self.log_action("translate", {
-            "dx": dx,
-            "dy": dy
-        })
+    def draw_bezier(self, **kwargs):
+        self._store_action("canvas_draw_bezier", kwargs)
 
-    def rotate(self, angle_in_degrees):
-        """
-        Rotate the canvas coordinate space.
-        """
-        self.log_action("rotate", {
-            "angle_in_degrees": angle_in_degrees
-        })
+    def draw_polygon(self, **kwargs):
+        self._store_action("canvas_draw_polygon", kwargs)
 
-    def scale(self, scale_x, scale_y):
-        """
-        Scale the canvas coordinate space.
-        """
-        self.log_action("scale", {
-            "scale_x": scale_x,
-            "scale_y": scale_y
-        })
+    def draw_point(self, **kwargs):
+        self._store_action("canvas_draw_point", kwargs)
 
-    def render_threejs(self, script):
+    def rotate(self, **kwargs):
+        self._store_action("canvas_rotate", kwargs)
+
+    def scale(self, **kwargs):
+        self._store_action("canvas_scale", kwargs)
+
+    def translate(self, **kwargs):
+        self._store_action("canvas_translate", kwargs)
+
+    def save(self, **kwargs):
+        self._store_action("canvas_save", kwargs)
+
+    def set_background(self, **kwargs):
+        self._store_action("canvas_set_background", kwargs)
+
+    # Graphing methods
+    def graph_bar(self, **kwargs):
+        self._store_action("canvas_graph_bar", kwargs)
+
+    def graph_line(self, **kwargs):
+        self._store_action("canvas_graph_line", kwargs)
+
+    def graph_pie(self, **kwargs):
+        self._store_action("canvas_graph_pie", kwargs)
+
+    def graph_scatter(self, **kwargs):
+        self._store_action("canvas_graph_scatter", kwargs)
+
+    def graph_histogram(self, **kwargs):
+        self._store_action("canvas_graph_histogram", kwargs)
+
+    def graph_heatmap(self, **kwargs):
+        self._store_action("canvas_graph_heatmap", kwargs)
+
+
+    @staticmethod
+    def render_threejs(object_uri, script):
         """
-        Push a raw Three.js script to the canvas.
+        Render ThreeJS into a canvas. Accepts either UUID or human_id.
         """
-        self.log_action("render_threejs", {
+        canvas = Canvas.from_id(object_uri)
+        if not canvas:
+            raise ValueError(f"Canvas not found: {object_uri}")
+        canvas._mark_type("threejs")
+        canvas._store_action("canvas_render_threejs", {
+            "object_uri": canvas.id,  # Always store resolved UUID
             "script": script
-        })
+        }, overwrite=True)
 
-    def save(self, file_path, format):
+
+    @staticmethod
+    def resolve_id(identifier: str) -> str:
         """
-        Save the canvas to a file.
+        Attempts to resolve a human-readable canvas ID to a full UUID.
+        If not found, assumes identifier is already a UUID.
         """
-        self.log_action("save", {
-            "file_path": file_path,
-            "format": format
-        })
+        conn = get_db_connection()
+        cur = conn.cursor()
 
-    def graph_bar(self, data, position=None, colors=None):
+        cur.execute("SELECT id FROM canvases WHERE human_id = ?", (identifier,))
+        row = cur.fetchone()
+        if row:
+            return row["id"]
+        return identifier
+
+
+    @staticmethod
+    def from_id(canvas_id: str):
         """
-        Draw a bar chart on the canvas.
-
-        Parameters:
-            data (List[Dict]): List of {label: str, value: float} entries.
-            position (str): Optional position setting.
-            colors (List[str]): Optional list of hex colors.
+        Loads a Canvas object from DB using either UUID or human-readable ID.
         """
-        self.log_action("graph_bar", {
-            "data": data,
-            "position": position,
-            "colors": colors
-        })
+        resolved_id = Canvas.resolve_id(canvas_id)
+        cur = get_db_connection().cursor()
+        cur.execute("SELECT * FROM canvases WHERE id = ?", (resolved_id,))
+        row = cur.fetchone()
+        if not row:
+            return None
+        canvas = Canvas.__new__(Canvas)  # Bypass __init__
+        canvas.id = row["id"]
+        canvas.human_id = row["human_id"]
+        canvas.name = row["name"]
+        canvas.width = row["width"]
+        canvas.height = row["height"]
+        canvas.bg_color = row["background"]
+        canvas.created_at = row["created_at"]
+        return canvas
 
-    def graph_line(self, data, axis_config=None, color=None):
-        """
-        Draw a line graph on the canvas.
-
-        Parameters:
-            data (List[Dict]): List of {x: float, y: float} points.
-            axis_config (Dict): Optional axis configuration.
-            color (str): Line color.
-        """
-        self.log_action("graph_line", {
-            "data": data,
-            "axis_config": axis_config,
-            "color": color
-        })
-
-    def graph_pie(self, data, center_x, center_y, radius):
-        """
-        Draw a pie chart on the canvas.
-
-        Parameters:
-            data (List[Dict]): List of {label: str, value: float}.
-            center_x (int): X coordinate of center.
-            center_y (int): Y coordinate of center.
-            radius (int): Radius of the pie chart.
-        """
-        self.log_action("graph_pie", {
-            "data": data,
-            "center_x": center_x,
-            "center_y": center_y,
-            "radius": radius
-        })
-
-    def graph_scatter(self, points, color=None, axis_config=None):
-        """
-        Draw a scatter plot on the canvas.
-
-        Parameters:
-            points (List[Tuple[float, float]]): Coordinates to plot.
-            color (str): Optional color of points.
-            axis_config (Dict): Optional axis configuration.
-        """
-        self.log_action("graph_scatter", {
-            "points": points,
-            "color": color,
-            "axis_config": axis_config
-        })
-
-    def graph_histogram(self, values, bins=None, normalize=None):
-        """
-        Draw a histogram on the canvas.
-
-        Parameters:
-            values (List[float]): Data values.
-            bins (int): Optional number of bins.
-            normalize (bool): Whether to normalize frequencies.
-        """
-        self.log_action("graph_histogram", {
-            "values": values,
-            "bins": bins,
-            "normalize": normalize
-        })
-
-    def graph_heatmap(self, matrix, labels=None, color_map=None):
-        """
-        Draw a heatmap from a 2D matrix.
-
-        Parameters:
-            matrix (List[List[float]]): 2D array of values.
-            labels (List[str]): Optional axis labels.
-            color_map (str): Optional color mapping preset.
-        """
-        self.log_action("graph_heatmap", {
-            "matrix": matrix,
-            "labels": labels,
-            "color_map": color_map
-        })
-
-    def load_from_log(self, actions):
-        """
-        Load canvas state from a list of recorded actions.
-        
-        This enables the canvas to be reconstructed from saved history.
-        """
-        for entry in actions:
-            action_type = entry.get("action")
-            params = entry.get("params", {})
-            self.log_action(action_type, params)
-
-    def invoke(self, action_type, params):
-        """
-        Generic method dispatcher. Calls a matching method on this canvas
-        using the action name and parameter dictionary.
-
-        Raises NotImplementedError if the method does not exist.
-        """
-        if hasattr(self, action_type):
-            method = getattr(self, action_type)
-            return method(**params)
-        raise NotImplementedError(f"Action '{action_type}' not supported in Canvas.")
-
-    def validate_params(self, action_type, params):
-        """
-        Validate parameters against the schema definition for the action.
-        This is optional and can be toggled via environment variable.
-
-        Returns True if valid, raises jsonschema.ValidationError if not.
-        """
-        import os
-        if not os.getenv("CANVAS_VALIDATE", "").lower() == "true":
-            return True  # No-op unless validation is enabled
-
-        import json
-        import jsonschema
-        from pathlib import Path
-
-        schema_path = Path(__file__).parent / "schema" / f"{action_type}.json"
-        if not schema_path.exists():
-            raise FileNotFoundError(f"Schema for {action_type} not found.")
-
-        with open(schema_path, "r") as f:
-            schema = json.load(f)
-
-        jsonschema.validate(instance=params, schema=schema["parameters"])
-        return True

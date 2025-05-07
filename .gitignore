@@ -1,0 +1,45 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment variables
+.env
+.env.*
+
+# Logs and debug
+*.log
+
+# OS-generated
+.DS_Store
+Thumbs.db
+
+# IDE/editor files
+.vscode/
+.idea/
+
+# Python virtual environments
+venv/
+.venv/
+
+# Databases
+*.db
+
+# Cache and compiled assets
+.cache/
+*.egg-info/
+
+# Local session state
+crucial/tools/.last_canvas_id
+
+# Output artifacts
+*.tar.gz
+*.zip
+*.png
+*.jpg
+*.svg
+*.gif
+
+# Secrets or keys
+*.key
+*.pem

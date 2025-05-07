@@ -1,19 +1,87 @@
 <!DOCTYPE html>
+<!--
+    File: index.html
+    Author: Wadih Khairallah
+    Description: 
+    Created: 2025-05-06 18:07:43
+    Modified: 2025-05-06 20:37:10
+-->
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Crucial Canvas Viewer</title>
+    <title>Crucial Canvas</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { margin: 0; background: #111; color: #eee; font-family: sans-serif; }
-        #controls { position: absolute; top: 10px; right: 10px; z-index: 100; }
-        canvas { display: block; }
+        html, body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #111;
+            font-family: sans-serif;
+        }
+        #canvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 0;
+        }
+        #controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+        #controls button {
+            background: #333;
+            color: #fff;
+            border: none;
+            padding: 6px 12px;
+            margin: 5px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        #canvas-name {
+            position: absolute;
+            z-index: 1000;  /* Updated from 100 */
+            font-size: 14px;
+            color: #ccc;
+            top: 10px;
+            left: 10px;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
+    <div id="canvas-name"></div>
+    <canvas id="canvas"></canvas>
     <div id="controls">
         <button id="skip">Skip to Latest</button>
     </div>
-    <canvas id="canvas"></canvas>
-    <script src="app.js"></script>
+    <script type="module" src="config.js"></script>
+    <script type="module" src="app.js"></script>
+    <div id="error-banner" style="
+      display: none;
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 10px 20px;
+      background-color: #222;
+      color: #ff6666;
+      font-family: monospace;
+      font-size: 14px;
+      border: 1px solid #444;
+      border-radius: 5px;
+      z-index: 9999;
+  ">
+      Invalid canvas ID. This canvas does not exist.
+  </div>
+
 </body>
 </html>
+
