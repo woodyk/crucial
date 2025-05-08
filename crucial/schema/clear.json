@@ -1,0 +1,15 @@
+{
+  "name": "clear",
+  "description": "Clear all content from the canvas",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "canvas_id": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "canvas_id"
+    ]
+  }
+}

@@ -2,7 +2,7 @@
 # Description: Central configuration for Crucial platform
 # Author: Ms. White
 # Created: 2025-05-06
-# Modified: 2025-05-07 12:39:14
+# Modified: 2025-05-07 22:20:03
 
 import os
 import logging
@@ -46,6 +46,9 @@ CONFIG = {
         "log_to_file": os.getenv("CRUCIAL_LOG_TO_FILE", "true").lower() == "true",
         "log_path": os.getenv("CRUCIAL_LOG_PATH", "logs/crucial.log"),
         "debug": os.getenv("CRUCIAL_LOG_DEBUG", "false").lower() == "true"
+    },
+    "SAVE": {
+        "output_dir": os.getenv("CRUCIAL_SAVE_IMAGES_PATH", "images")
     }
 }
 

@@ -1,0 +1,39 @@
+{
+  "name": "draw_text",
+  "description": "Render text on the canvas",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "canvas_id": {
+        "type": "string"
+      },
+      "text": {
+        "type": "string"
+      },
+      "x": {
+        "type": "integer"
+      },
+      "y": {
+        "type": "integer"
+      },
+      "font": {
+        "type": "string"
+      },
+      "size": {
+        "type": "integer"
+      },
+      "color": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "canvas_id",
+      "text",
+      "x",
+      "y",
+      "font",
+      "size",
+      "color"
+    ]
+  }
+}

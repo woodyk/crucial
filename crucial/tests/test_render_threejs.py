@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 # File: test_render_threejs.py
-# Description: Integration test for full-page canvas_render_threejs
+# Description: Integration test for full-page render_threejs
 # Author: Ms. White
 # Updated: 2025-05-07
 
@@ -71,7 +71,7 @@ def render_threejs(canvas_id):
     """
 
     payload = {
-        "action": "canvas_render_threejs",
+        "action": "render_threejs",
         "params": {
             "canvas_id": canvas_id,
             "script": html_script

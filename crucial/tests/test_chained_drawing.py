@@ -5,7 +5,7 @@
 # Author: Wadih Khairallah
 # Description: 
 # Created: 2025-05-07 11:14:30
-# Modified: 2025-05-07 13:41:42
+# Modified: 2025-05-07 23:55:48
 import requests
 
 API_KEY = "demo-key"
@@ -42,7 +42,7 @@ def test_chained_canvas_draw():
     print(f"[✓] Canvas created: {canvas_id}")
 
     # Draw rectangle
-    post_canvas("canvas_draw_rectangle", {
+    post_canvas("draw_rectangle", {
         "canvas_id": canvas_id,
         "x": 100,
         "y": 100,
@@ -53,7 +53,7 @@ def test_chained_canvas_draw():
     })
 
     # Draw circle
-    post_canvas("canvas_draw_circle", {
+    post_canvas("draw_circle", {
         "canvas_id": canvas_id,
         "center_x": 250,
         "center_y": 200,
@@ -63,7 +63,7 @@ def test_chained_canvas_draw():
     })
 
     # Draw line
-    post_canvas("canvas_draw_line", {
+    post_canvas("draw_line", {
         "canvas_id": canvas_id,
         "start_x": 0,
         "start_y": 0,
@@ -74,7 +74,7 @@ def test_chained_canvas_draw():
     })
 
     # Draw text
-    post_canvas("canvas_draw_text", {
+    post_canvas("draw_text", {
         "canvas_id": canvas_id,
         "text": "Hello Crucial",
         "x": 300,

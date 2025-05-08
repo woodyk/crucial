@@ -1,0 +1,56 @@
+{
+  "name": "graph_wordcloud",
+  "description": "Draw a word cloud where word size reflects frequency or weight.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "canvas_id": {
+        "type": "string"
+      },
+      "words": {
+        "type": "array",
+        "description": "List of {text, value} items",
+        "items": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string"
+            },
+            "value": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "text",
+            "value"
+          ]
+        }
+      },
+      "color": {
+        "type": "string",
+        "pattern": "^#(?:[0-9a-fA-F]{3}){1,2}$",
+        "description": "Base color to tint word variations"
+      },
+      "theme": {
+        "type": "string",
+        "enum": [
+          "light",
+          "dark"
+        ],
+        "default": "dark"
+      },
+      "title": {
+        "type": "string"
+      },
+      "transparent": {
+        "type": "boolean",
+        "default": false
+      }
+    },
+    "required": [
+      "canvas_id",
+      "words",
+      "color"
+    ]
+  }
+}

@@ -2,10 +2,16 @@
 # -*- coding: utf-8 -*-
 #
 # File: canvas.py
-# Author: Ms. White
-# Description: Crucial Canvas class with DB-integrated action logging
+# Author: Wadih Khairallah
+# Description: 
 # Created: 2025-05-07 22:24:26
-# Modified: 2025-05-08 17:01:54
+# Modified: 2025-05-07 23:32:04
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
+# File: canvas.py
+# Description: Crucial Canvas class with DB-integrated action logging
+# Author: Ms. White
 # Updated: 2025-05-07
 
 import os
@@ -13,6 +19,7 @@ import json
 import uuid
 import sys
 from datetime import datetime
+from PIL import Image, ImageDraw
 from crucial.config import CONFIG, get_logger
 from crucial.db import get_db_connection
 from crucial.utils.human_id import generate_human_id
@@ -70,38 +77,38 @@ class Canvas:
         logger.info("Canvas[%s] type marked as: %s", self.id, type_name)
 
     # Core drawing methods
-    def clear(self, canvas_id): self._store_action("clear", {"canvas_id": canvas_id})
-    def draw_line(self, **kwargs): self._store_action("draw_line", kwargs)
-    def draw_circle(self, **kwargs): self._store_action("draw_circle", kwargs)
-    def draw_rectangle(self, **kwargs): self._store_action("draw_rectangle", kwargs)
-    def draw_text(self, **kwargs): self._store_action("draw_text", kwargs)
-    def draw_arc(self, **kwargs): self._store_action("draw_arc", kwargs)
-    def draw_bezier(self, **kwargs): self._store_action("draw_bezier", kwargs)
-    def draw_polygon(self, **kwargs): self._store_action("draw_polygon", kwargs)
-    def draw_point(self, **kwargs): self._store_action("draw_point", kwargs)
-    def draw_gradient(self, **kwargs): self._store_action("draw_gradient", kwargs)
-    def draw_path(self, **kwargs): self._store_action("draw_path", kwargs)
-    def draw_spline(self, **kwargs): self._store_action("draw_spline", kwargs)
+    def clear(self, canvas_id): self._store_action("canvas_clear", {"canvas_id": canvas_id})
+    def draw_line(self, **kwargs): self._store_action("canvas_draw_line", kwargs)
+    def draw_circle(self, **kwargs): self._store_action("canvas_draw_circle", kwargs)
+    def draw_rectangle(self, **kwargs): self._store_action("canvas_draw_rectangle", kwargs)
+    def draw_text(self, **kwargs): self._store_action("canvas_draw_text", kwargs)
+    def draw_arc(self, **kwargs): self._store_action("canvas_draw_arc", kwargs)
+    def draw_bezier(self, **kwargs): self._store_action("canvas_draw_bezier", kwargs)
+    def draw_polygon(self, **kwargs): self._store_action("canvas_draw_polygon", kwargs)
+    def draw_point(self, **kwargs): self._store_action("canvas_draw_point", kwargs)
+    def draw_gradient(self, **kwargs): self._store_action("canvas_draw_gradient", kwargs)
+    def draw_path(self, **kwargs): self._store_action("canvas_draw_path", kwargs)
+    def draw_spline(self, **kwargs): self._store_action("canvas_draw_spline", kwargs)
 
     # Canvas transforms
-    def rotate(self, **kwargs): self._store_action("rotate", kwargs)
-    def scale(self, **kwargs): self._store_action("scale", kwargs)
-    def translate(self, **kwargs): self._store_action("translate", kwargs)
-    def set_background(self, **kwargs): self._store_action("set_background", kwargs)
+    def rotate(self, **kwargs): self._store_action("canvas_rotate", kwargs)
+    def scale(self, **kwargs): self._store_action("canvas_scale", kwargs)
+    def translate(self, **kwargs): self._store_action("canvas_translate", kwargs)
+    def set_background(self, **kwargs): self._store_action("canvas_set_background", kwargs)
 
     # Graphing methods
-    def graph_bar(self, **kwargs): self._store_action("graph_bar", kwargs)
-    def graph_line(self, **kwargs): self._store_action("graph_line", kwargs)
-    def graph_pie(self, **kwargs): self._store_action("graph_pie", kwargs)
-    def graph_scatter(self, **kwargs): self._store_action("graph_scatter", kwargs)
-    def graph_histogram(self, **kwargs): self._store_action("graph_histogram", kwargs)
-    def graph_heatmap(self, **kwargs): self._store_action("graph_heatmap", kwargs)
-    def graph_area(self, **kwargs): self._store_action("graph_area", kwargs)
-    def graph_bubble(self, **kwargs): self._store_action("graph_bubble", kwargs)
-    def graph_donut(self, **kwargs): self._store_action("graph_donut", kwargs)
-    def graph_gauge(self, **kwargs): self._store_action("graph_gauge", kwargs)
-    def graph_radar(self, **kwargs): self._store_action("graph_radar", kwargs)
-    def graph_wordcloud(self, **kwargs): self._store_action("graph_wordcloud", kwargs)
+    def graph_bar(self, **kwargs): self._store_action("canvas_graph_bar", kwargs)
+    def graph_line(self, **kwargs): self._store_action("canvas_graph_line", kwargs)
+    def graph_pie(self, **kwargs): self._store_action("canvas_graph_pie", kwargs)
+    def graph_scatter(self, **kwargs): self._store_action("canvas_graph_scatter", kwargs)
+    def graph_histogram(self, **kwargs): self._store_action("canvas_graph_histogram", kwargs)
+    def graph_heatmap(self, **kwargs): self._store_action("canvas_graph_heatmap", kwargs)
+    def graph_area(self, **kwargs): self._store_action("canvas_graph_area", kwargs)
+    def graph_bubble(self, **kwargs): self._store_action("canvas_graph_bubble", kwargs)
+    def graph_donut(self, **kwargs): self._store_action("canvas_graph_donut", kwargs)
+    def graph_gauge(self, **kwargs): self._store_action("canvas_graph_gauge", kwargs)
+    def graph_radar(self, **kwargs): self._store_action("canvas_graph_radar", kwargs)
+    def graph_wordcloud(self, **kwargs): self._store_action("canvas_graph_wordcloud", kwargs)
 
 
     # Image Storage
@@ -132,45 +139,6 @@ class Canvas:
         logger.info("Canvas[%s] saved to %s", self.id, full_path)
 
         return full_path
-
-    def load_actions(self):
-        """
-        Load and cache canvas actions for rendering.
-        """
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute(
-            "SELECT action, params FROM actions WHERE canvas_id = ? ORDER BY timestamp ASC",
-            (self.id,)
-        )
-        self.actions = []
-        for row in cur.fetchall():
-            try:
-                action = row["action"]
-                params = json.loads(row["params"])
-                self.actions.append({"action": action, "params": params})
-            except Exception as e:
-                logger.warning("Failed to decode action row: %s", e)
-
-    @staticmethod
-    def load(canvas_id: str) -> "Canvas":
-        resolved_id = Canvas.resolve_id(canvas_id)
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute("SELECT * FROM canvases WHERE id = ?", (resolved_id,))
-        row = cur.fetchone()
-        if not row:
-            raise ValueError(f"Canvas {canvas_id} not found.")
-        canvas = Canvas(
-            name=row["name"],
-            width=row["width"],
-            height=row["height"],
-            bg_color=row["background"]
-        )
-        canvas.id = row["id"]
-        canvas.human_id = row["human_id"]
-        return canvas
-
 
     @staticmethod
     def create(name: str, width: int, height: int, bg_color: str):

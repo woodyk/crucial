@@ -1,0 +1,29 @@
+{
+  "name": "save",
+  "description": "Save the canvas to an image or vector file",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "canvas_id": {
+        "type": "string"
+      },
+      "file_path": {
+        "type": "string",
+        "description": "Optional override path for saved image"
+      },
+      "format": {
+        "type": "string",
+        "enum": [
+          "png",
+          "svg",
+          "jpeg"
+        ],
+        "default": "png"
+      }
+    },
+    "required": [
+      "canvas_id",
+      "format"
+    ]
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "name": "draw_polygon",
+  "description": "Draw a polygon defined by a set of points",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "canvas_id": {
+        "type": "string"
+      },
+      "points": {
+        "type": "array",
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      },
+      "color": {
+        "type": "string"
+      },
+      "fill": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "canvas_id",
+      "points",
+      "color",
+      "fill"
+    ]
+  }
+}

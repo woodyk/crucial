@@ -1,0 +1,23 @@
+{
+  "name": "scale",
+  "description": "Scale the canvas coordinate space",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "canvas_id": {
+        "type": "string"
+      },
+      "scale_x": {
+        "type": "number"
+      },
+      "scale_y": {
+        "type": "number"
+      }
+    },
+    "required": [
+      "canvas_id",
+      "scale_x",
+      "scale_y"
+    ]
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "name": "graph_scatter",
+  "description": "Render a scatter plot of 2D points.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "canvas_id": {
+        "type": "string"
+      },
+      "points": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "x",
+            "y"
+          ]
+        }
+      },
+      "color": {
+        "type": "string",
+        "pattern": "^#(?:[0-9a-fA-F]{3}){1,2}$"
+      },
+      "theme": {
+        "type": "string",
+        "enum": [
+          "light",
+          "dark"
+        ],
+        "default": "dark"
+      },
+      "title": {
+        "type": "string"
+      },
+      "transparent": {
+        "type": "boolean",
+        "default": false
+      }
+    },
+    "required": [
+      "canvas_id",
+      "points",
+      "color"
+    ]
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "name": "draw_path",
+  "description": "Draw a complex path defined by multiple points on the canvas",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "canvas_id": {
+        "type": "string"
+      },
+      "points": {
+        "type": "array",
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      },
+      "color": {
+        "type": "string"
+      },
+      "width": {
+        "type": "integer"
+      }
+    },
+    "required": [
+      "canvas_id",
+      "points",
+      "color",
+      "width"
+    ]
+  }
+}

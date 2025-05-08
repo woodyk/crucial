@@ -1,0 +1,46 @@
+{
+  "name": "graph_gauge",
+  "description": "Render a semicircular gauge/meter with a single value.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "canvas_id": {
+        "type": "string"
+      },
+      "value": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 100,
+        "description": "Percentage value (0\u2013100) to display"
+      },
+      "label": {
+        "type": "string",
+        "description": "Label to appear below the gauge needle"
+      },
+      "color": {
+        "type": "string",
+        "pattern": "^#(?:[0-9a-fA-F]{3}){1,2}$"
+      },
+      "theme": {
+        "type": "string",
+        "enum": [
+          "light",
+          "dark"
+        ],
+        "default": "dark"
+      },
+      "title": {
+        "type": "string"
+      },
+      "transparent": {
+        "type": "boolean",
+        "default": false
+      }
+    },
+    "required": [
+      "canvas_id",
+      "value",
+      "color"
+    ]
+  }
+}

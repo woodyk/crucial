@@ -1,0 +1,58 @@
+{
+  "name": "graph_line",
+  "description": "Render a line graph from coordinate pairs using Crucial aesthetics.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "canvas_id": {
+        "type": "string",
+        "description": "Canvas to render to"
+      },
+      "data": {
+        "type": "array",
+        "description": "Array of {x, y} coordinate objects",
+        "items": {
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "x",
+            "y"
+          ]
+        }
+      },
+      "color": {
+        "type": "string",
+        "pattern": "^#(?:[0-9a-fA-F]{3}){1,2}$",
+        "description": "Base color for line and points"
+      },
+      "theme": {
+        "type": "string",
+        "enum": [
+          "light",
+          "dark"
+        ],
+        "default": "dark"
+      },
+      "title": {
+        "type": "string",
+        "description": "Optional chart title"
+      },
+      "transparent": {
+        "type": "boolean",
+        "default": false
+      }
+    },
+    "required": [
+      "canvas_id",
+      "data",
+      "color"
+    ]
+  }
+}

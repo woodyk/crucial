@@ -1,0 +1,59 @@
+{
+  "name": "graph_pie",
+  "description": "Draw a proportional pie chart using Crucial theme styles.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "canvas_id": {
+        "type": "string",
+        "description": "The canvas to render to"
+      },
+      "data": {
+        "type": "array",
+        "description": "List of segments with labels and values",
+        "items": {
+          "type": "object",
+          "properties": {
+            "label": {
+              "type": "string"
+            },
+            "value": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "label",
+            "value"
+          ]
+        }
+      },
+      "color": {
+        "type": "string",
+        "pattern": "^#(?:[0-9a-fA-F]{3}){1,2}$",
+        "description": "Base hex color for segment palette"
+      },
+      "theme": {
+        "type": "string",
+        "enum": [
+          "light",
+          "dark"
+        ],
+        "default": "dark"
+      },
+      "title": {
+        "type": "string",
+        "description": "Optional title above the pie chart"
+      },
+      "transparent": {
+        "type": "boolean",
+        "default": false,
+        "description": "If true, no background is drawn"
+      }
+    },
+    "required": [
+      "canvas_id",
+      "data",
+      "color"
+    ]
+  }
+}

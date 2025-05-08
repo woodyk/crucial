@@ -1,0 +1,39 @@
+{
+  "name": "draw_rectangle",
+  "description": "Draw a rectangle on the canvas",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "canvas_id": {
+        "type": "string"
+      },
+      "x": {
+        "type": "integer"
+      },
+      "y": {
+        "type": "integer"
+      },
+      "width": {
+        "type": "integer"
+      },
+      "height": {
+        "type": "integer"
+      },
+      "color": {
+        "type": "string"
+      },
+      "fill": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "canvas_id",
+      "x",
+      "y",
+      "width",
+      "height",
+      "color",
+      "fill"
+    ]
+  }
+}

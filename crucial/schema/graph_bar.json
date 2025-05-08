@@ -1,0 +1,60 @@
+{
+  "name": "graph_bar",
+  "description": "Draw a Crucial-styled bar chart on the canvas.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "canvas_id": {
+        "type": "string",
+        "description": "The canvas to draw the chart on"
+      },
+      "data": {
+        "type": "array",
+        "description": "List of bar entries with labels and values",
+        "items": {
+          "type": "object",
+          "properties": {
+            "label": {
+              "type": "string"
+            },
+            "value": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "label",
+            "value"
+          ]
+        }
+      },
+      "color": {
+        "type": "string",
+        "pattern": "^#(?:[0-9a-fA-F]{3}){1,2}$",
+        "description": "Base hex color for generating palette"
+      },
+      "theme": {
+        "type": "string",
+        "enum": [
+          "light",
+          "dark"
+        ],
+        "default": "dark",
+        "description": "Graph background + text theme"
+      },
+      "title": {
+        "type": "string",
+        "description": "Optional chart title"
+      },
+      "transparent": {
+        "type": "boolean",
+        "default": false,
+        "description": "True to skip background fill"
+      }
+    },
+    "required": [
+      "canvas_id",
+      "data",
+      "color"
+    ]
+  }
+}

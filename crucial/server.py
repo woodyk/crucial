@@ -6,14 +6,18 @@
 #              including frontend static hosting
 # Author: Ms. White
 # Created: 2025-05-06
-# Modified: 2025-05-07 13:52:40
+# Modified: 2025-05-08 17:29:09
 
-from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import JSONResponse, FileResponse
-from fastapi.staticfiles import StaticFiles
-import uvicorn
 import os
 import json
+import uvicorn
+
+from io import BytesIO
+from PIL import Image, ImageDraw
+
+from fastapi import FastAPI, Request, HTTPException, Query
+from fastapi.responses import JSONResponse, FileResponse, StreamingResponse, Response
+from fastapi.staticfiles import StaticFiles
 
 from crucial.registry import get_registry
 from crucial.dispatcher import Dispatcher
@@ -80,6 +84,30 @@ async def canvas_action(request: Request, payload: dict):
         logger.exception("Canvas dispatch error for action: %s", action)
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
+@app.get("/canvas")
+async def serve_canvas_query(id: str = Query(None)):
+    if not id:
+        raise HTTPException(status_code=400, detail="Missing canvas id")
+    resolved_id = Canvas.resolve_id(id)
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT 1 FROM canvases WHERE id = ? OR human_id = ?", (resolved_id, resolved_id))
+    if not cur.fetchone():
+        logger.warning("Viewer load failed: canvas %s not found", id)
+        raise HTTPException(status_code=404, detail="Canvas not found")
+    return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
+
+@app.get("/canvas/{canvas_id}")
+async def serve_canvas_view(canvas_id: str):
+    resolved_id = Canvas.resolve_id(canvas_id)
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT 1 FROM canvases WHERE id = ? OR human_id = ?", (resolved_id, resolved_id))
+    if not cur.fetchone():
+        logger.warning("Viewer load failed: canvas %s not found", canvas_id)
+        raise HTTPException(status_code=404, detail="Canvas not found")
+    return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
+
 @app.post("/canvas/create")
 async def create_canvas(request: Request, payload: dict):
     require_api_key_header(request.headers)
@@ -98,7 +126,6 @@ async def create_canvas(request: Request, payload: dict):
         "human_id": canvas.human_id,
         "metadata": canvas.__dict__
     }
-
 
 @app.get("/object/{canvas_id}")
 async def get_canvas_metadata(canvas_id: str):

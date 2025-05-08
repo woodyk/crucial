@@ -1,0 +1,54 @@
+{
+  "name": "graph_area",
+  "description": "Render an area graph beneath a connected line using Crucial style.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "canvas_id": {
+        "type": "string"
+      },
+      "data": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "x",
+            "y"
+          ]
+        }
+      },
+      "color": {
+        "type": "string",
+        "pattern": "^#(?:[0-9a-fA-F]{3}){1,2}$"
+      },
+      "theme": {
+        "type": "string",
+        "enum": [
+          "light",
+          "dark"
+        ],
+        "default": "dark"
+      },
+      "title": {
+        "type": "string"
+      },
+      "transparent": {
+        "type": "boolean",
+        "default": false
+      }
+    },
+    "required": [
+      "canvas_id",
+      "data",
+      "color"
+    ]
+  }
+}

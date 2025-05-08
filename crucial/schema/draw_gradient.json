@@ -1,0 +1,47 @@
+{
+  "name": "draw_gradient",
+  "description": "Create a gradient across a specified area in the canvas",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "canvas_id": {
+        "type": "string"
+      },
+      "x": {
+        "type": "integer"
+      },
+      "y": {
+        "type": "integer"
+      },
+      "width": {
+        "type": "integer"
+      },
+      "height": {
+        "type": "integer"
+      },
+      "start_color": {
+        "type": "string"
+      },
+      "end_color": {
+        "type": "string"
+      },
+      "type": {
+        "type": "string",
+        "enum": [
+          "linear",
+          "radial"
+        ]
+      }
+    },
+    "required": [
+      "canvas_id",
+      "x",
+      "y",
+      "width",
+      "height",
+      "start_color",
+      "end_color",
+      "type"
+    ]
+  }
+}

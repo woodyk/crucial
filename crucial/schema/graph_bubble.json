@@ -1,0 +1,59 @@
+{
+  "name": "graph_bubble",
+  "description": "Render a bubble chart with x,y coordinates and relative sizes.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "canvas_id": {
+        "type": "string"
+      },
+      "bubbles": {
+        "type": "array",
+        "description": "List of bubbles with x, y, and size",
+        "items": {
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            },
+            "size": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "x",
+            "y",
+            "size"
+          ]
+        }
+      },
+      "color": {
+        "type": "string",
+        "pattern": "^#(?:[0-9a-fA-F]{3}){1,2}$"
+      },
+      "theme": {
+        "type": "string",
+        "enum": [
+          "light",
+          "dark"
+        ],
+        "default": "dark"
+      },
+      "title": {
+        "type": "string"
+      },
+      "transparent": {
+        "type": "boolean",
+        "default": false
+      }
+    },
+    "required": [
+      "canvas_id",
+      "bubbles",
+      "color"
+    ]
+  }
+}

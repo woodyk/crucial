@@ -1,0 +1,39 @@
+{
+  "name": "draw_line",
+  "description": "Draw a straight line on the canvas",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "canvas_id": {
+        "type": "string"
+      },
+      "start_x": {
+        "type": "integer"
+      },
+      "start_y": {
+        "type": "integer"
+      },
+      "end_x": {
+        "type": "integer"
+      },
+      "end_y": {
+        "type": "integer"
+      },
+      "color": {
+        "type": "string"
+      },
+      "width": {
+        "type": "integer"
+      }
+    },
+    "required": [
+      "canvas_id",
+      "start_x",
+      "start_y",
+      "end_x",
+      "end_y",
+      "color",
+      "width"
+    ]
+  }
+}

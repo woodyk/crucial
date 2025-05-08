@@ -1,0 +1,51 @@
+{
+  "name": "graph_radar",
+  "description": "Render a multi-axis radar (spider) chart using Crucial style.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "canvas_id": {
+        "type": "string"
+      },
+      "labels": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Axis labels around the circle"
+      },
+      "values": {
+        "type": "array",
+        "items": {
+          "type": "number"
+        },
+        "description": "One value per axis, in same order as labels"
+      },
+      "color": {
+        "type": "string",
+        "pattern": "^#(?:[0-9a-fA-F]{3}){1,2}$"
+      },
+      "theme": {
+        "type": "string",
+        "enum": [
+          "light",
+          "dark"
+        ],
+        "default": "dark"
+      },
+      "title": {
+        "type": "string"
+      },
+      "transparent": {
+        "type": "boolean",
+        "default": false
+      }
+    },
+    "required": [
+      "canvas_id",
+      "labels",
+      "values",
+      "color"
+    ]
+  }
+}

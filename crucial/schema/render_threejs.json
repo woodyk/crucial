@@ -1,0 +1,19 @@
+{
+  "name": "render_threejs",
+  "description": "Render a raw Three.js script on the canvas",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "canvas_id": {
+        "type": "string"
+      },
+      "script": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "canvas_id",
+      "script"
+    ]
+  }
+}

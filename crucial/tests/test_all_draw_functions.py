@@ -2,6 +2,13 @@
 # -*- coding: utf-8 -*-
 #
 # File: test_all_draw_functions.py
+# Author: Wadih Khairallah
+# Description: 
+# Created: 2025-05-07 23:54:37
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
+# File: test_all_draw_functions.py
 # Description: Validates all core drawing actions via the Crucial API
 # Author: Ms. White
 # Updated: 2025-05-07
@@ -37,7 +44,7 @@ def test_all_draw_functions():
     print(f"[✓] Canvas created: {canvas_id}")
 
     # Line
-    post_canvas_action("canvas_draw_line", {
+    post_canvas_action("draw_line", {
         "canvas_id": canvas_id,
         "start_x": 50,
         "start_y": 50,
@@ -48,7 +55,7 @@ def test_all_draw_functions():
     })
 
     # Circle
-    post_canvas_action("canvas_draw_circle", {
+    post_canvas_action("draw_circle", {
         "canvas_id": canvas_id,
         "center_x": 400,
         "center_y": 150,
@@ -58,7 +65,7 @@ def test_all_draw_functions():
     })
 
     # Rectangle
-    post_canvas_action("canvas_draw_rectangle", {
+    post_canvas_action("draw_rectangle", {
         "canvas_id": canvas_id,
         "x": 500,
         "y": 100,
@@ -69,7 +76,7 @@ def test_all_draw_functions():
     })
 
     # Polygon
-    post_canvas_action("canvas_draw_polygon", {
+    post_canvas_action("draw_polygon", {
         "canvas_id": canvas_id,
         "points": [[100, 300], [200, 350], [150, 400], [75, 370]],
         "color": "#800080",
@@ -77,7 +84,7 @@ def test_all_draw_functions():
     })
 
     # Arc
-    post_canvas_action("canvas_draw_arc", {
+    post_canvas_action("draw_arc", {
         "canvas_id": canvas_id,
         "center_x": 700,
         "center_y": 150,
@@ -89,7 +96,7 @@ def test_all_draw_functions():
     })
 
     # Bezier
-    post_canvas_action("canvas_draw_bezier", {
+    post_canvas_action("draw_bezier", {
         "canvas_id": canvas_id,
         "control_points": [[100, 500], [200, 450], [300, 550], [400, 500]],
         "color": "#ff4500",
@@ -97,7 +104,7 @@ def test_all_draw_functions():
     })
 
     # Point
-    post_canvas_action("canvas_draw_point", {
+    post_canvas_action("draw_point", {
         "canvas_id": canvas_id,
         "x": 600,
         "y": 600,
@@ -106,7 +113,7 @@ def test_all_draw_functions():
     })
 
     # Text
-    post_canvas_action("canvas_draw_text", {
+    post_canvas_action("draw_text", {
         "canvas_id": canvas_id,
         "text": "Full Draw Test!",
         "x": 400,

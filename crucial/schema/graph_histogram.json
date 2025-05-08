@@ -1,0 +1,55 @@
+{
+  "name": "graph_histogram",
+  "description": "Draw a histogram from numeric data using Crucial styling.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "canvas_id": {
+        "type": "string",
+        "description": "Target canvas ID"
+      },
+      "values": {
+        "type": "array",
+        "items": {
+          "type": "number"
+        },
+        "description": "Array of numeric values to bin"
+      },
+      "bins": {
+        "type": "integer",
+        "default": 10,
+        "description": "Number of bins to group values into"
+      },
+      "normalize": {
+        "type": "boolean",
+        "default": false,
+        "description": "Whether to normalize bar height"
+      },
+      "color": {
+        "type": "string",
+        "pattern": "^#(?:[0-9a-fA-F]{3}){1,2}$",
+        "description": "Base color for the bar palette"
+      },
+      "theme": {
+        "type": "string",
+        "enum": [
+          "dark",
+          "light"
+        ],
+        "default": "dark"
+      },
+      "title": {
+        "type": "string"
+      },
+      "transparent": {
+        "type": "boolean",
+        "default": false
+      }
+    },
+    "required": [
+      "canvas_id",
+      "values",
+      "color"
+    ]
+  }
+}

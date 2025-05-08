@@ -2,22 +2,32 @@
 # -*- coding: utf-8 -*-
 #
 # File: canvas.py
+# Author: Wadih Khairallah
+# Description: 
+# Created: 2025-05-08 02:35:36
+# Modified: 2025-05-08 02:37:29
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
+# File: canvas.py
+# Description: Crucial Canvas class with DB-integrated action logging and dynamic method support
 # Author: Ms. White
-# Description: Crucial Canvas class with DB-integrated action logging
-# Created: 2025-05-07 22:24:26
-# Modified: 2025-05-08 17:01:54
 # Updated: 2025-05-07
 
 import os
 import json
 import uuid
-import sys
 from datetime import datetime
+from types import MethodType
+from PIL import Image, ImageDraw
+
 from crucial.config import CONFIG, get_logger
 from crucial.db import get_db_connection
 from crucial.utils.human_id import generate_human_id
+from crucial.registry import load_all_schemas
 
 logger = get_logger(__name__)
+
 
 class Canvas:
     def __init__(self, name, width, height, bg_color):
@@ -69,52 +79,12 @@ class Canvas:
         conn.commit()
         logger.info("Canvas[%s] type marked as: %s", self.id, type_name)
 
-    # Core drawing methods
-    def clear(self, canvas_id): self._store_action("clear", {"canvas_id": canvas_id})
-    def draw_line(self, **kwargs): self._store_action("draw_line", kwargs)
-    def draw_circle(self, **kwargs): self._store_action("draw_circle", kwargs)
-    def draw_rectangle(self, **kwargs): self._store_action("draw_rectangle", kwargs)
-    def draw_text(self, **kwargs): self._store_action("draw_text", kwargs)
-    def draw_arc(self, **kwargs): self._store_action("draw_arc", kwargs)
-    def draw_bezier(self, **kwargs): self._store_action("draw_bezier", kwargs)
-    def draw_polygon(self, **kwargs): self._store_action("draw_polygon", kwargs)
-    def draw_point(self, **kwargs): self._store_action("draw_point", kwargs)
-    def draw_gradient(self, **kwargs): self._store_action("draw_gradient", kwargs)
-    def draw_path(self, **kwargs): self._store_action("draw_path", kwargs)
-    def draw_spline(self, **kwargs): self._store_action("draw_spline", kwargs)
+    def clear(self, canvas_id):
+        self._store_action("canvas_clear", {"canvas_id": canvas_id})
 
-    # Canvas transforms
-    def rotate(self, **kwargs): self._store_action("rotate", kwargs)
-    def scale(self, **kwargs): self._store_action("scale", kwargs)
-    def translate(self, **kwargs): self._store_action("translate", kwargs)
-    def set_background(self, **kwargs): self._store_action("set_background", kwargs)
-
-    # Graphing methods
-    def graph_bar(self, **kwargs): self._store_action("graph_bar", kwargs)
-    def graph_line(self, **kwargs): self._store_action("graph_line", kwargs)
-    def graph_pie(self, **kwargs): self._store_action("graph_pie", kwargs)
-    def graph_scatter(self, **kwargs): self._store_action("graph_scatter", kwargs)
-    def graph_histogram(self, **kwargs): self._store_action("graph_histogram", kwargs)
-    def graph_heatmap(self, **kwargs): self._store_action("graph_heatmap", kwargs)
-    def graph_area(self, **kwargs): self._store_action("graph_area", kwargs)
-    def graph_bubble(self, **kwargs): self._store_action("graph_bubble", kwargs)
-    def graph_donut(self, **kwargs): self._store_action("graph_donut", kwargs)
-    def graph_gauge(self, **kwargs): self._store_action("graph_gauge", kwargs)
-    def graph_radar(self, **kwargs): self._store_action("graph_radar", kwargs)
-    def graph_wordcloud(self, **kwargs): self._store_action("graph_wordcloud", kwargs)
-
-
-    # Image Storage
     def save(self, file_path=None, format="png"):
         """
         Save the canvas to disk as an image file.
-
-        Args:
-            file_path (str): Optional override for file path.
-            format (str): Output format, default is 'png'.
-
-        Returns:
-            str: Final path where the image was saved.
         """
         output_dir = CONFIG["SAVE"]["output_dir"]
         os.makedirs(output_dir, exist_ok=True)
@@ -133,81 +103,25 @@ class Canvas:
 
         return full_path
 
-    def load_actions(self):
-        """
-        Load and cache canvas actions for rendering.
-        """
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute(
-            "SELECT action, params FROM actions WHERE canvas_id = ? ORDER BY timestamp ASC",
-            (self.id,)
-        )
-        self.actions = []
-        for row in cur.fetchall():
-            try:
-                action = row["action"]
-                params = json.loads(row["params"])
-                self.actions.append({"action": action, "params": params})
-            except Exception as e:
-                logger.warning("Failed to decode action row: %s", e)
-
-    @staticmethod
-    def load(canvas_id: str) -> "Canvas":
-        resolved_id = Canvas.resolve_id(canvas_id)
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute("SELECT * FROM canvases WHERE id = ?", (resolved_id,))
-        row = cur.fetchone()
-        if not row:
-            raise ValueError(f"Canvas {canvas_id} not found.")
-        canvas = Canvas(
-            name=row["name"],
-            width=row["width"],
-            height=row["height"],
-            bg_color=row["background"]
-        )
-        canvas.id = row["id"]
-        canvas.human_id = row["human_id"]
-        return canvas
-
-
     @staticmethod
     def create(name: str, width: int, height: int, bg_color: str):
         """
         Factory method to create and persist a new Canvas instance.
-
-        Args:
-            name (str): Human-readable name for the canvas.
-            width (int): Width in pixels.
-            height (int): Height in pixels.
-            bg_color (str): Background color in hex.
-
-        Returns:
-            Canvas: A fully initialized Canvas object saved to DB.
         """
         canvas = Canvas(name, width, height, bg_color)
         return canvas
 
-
-    @staticmethod
-    def render_threejs(canvas_id, script):
-        canvas = Canvas.from_id(canvas_id)
-        if not canvas:
-            logger.error("Canvas not found for render_threejs: %s", canvas_id)
-            raise ValueError(f"Canvas not found: {canvas_id}")
-        canvas._mark_type("threejs")
-        canvas._store_action("canvas_render_threejs", {
-            "canvas_id": canvas.id,
+    def render_threejs(self, script):
+        self._mark_type("threejs")
+        self._store_action("render_threejs", {
+            "canvas_id": self.id,
             "script": script
         }, overwrite=True)
-        logger.info("Canvas[%s] rendered via ThreeJS", canvas.id)
+        logger.info("Canvas[%s] rendered via ThreeJS", self.id)
+
 
     @staticmethod
     def resolve_id(identifier: str) -> str:
-        """
-        Resolve either a canvas UUID or a human ID to an internal canvas ID.
-        """
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute("SELECT id FROM canvases WHERE human_id = ?", (identifier,))
@@ -237,4 +151,24 @@ class Canvas:
         canvas.created_at = row["created_at"]
         logger.debug("Canvas object loaded: %s (%s)", canvas.name, canvas.id)
         return canvas
+
+
+# --- Auto-generate methods for all schemas ---
+def _inject_schema_methods(cls):
+    schemas = load_all_schemas()
+    for action_name in schemas.keys():
+        if hasattr(cls, action_name):
+            continue  # Don't override existing methods
+
+        def make_method(action):
+            def method(self, **kwargs):
+                self._store_action(action, kwargs)
+            method.__name__ = action
+            method.__doc__ = f"Dynamically generated canvas method for {action}."
+            return method
+
+        setattr(cls, action_name, make_method(action_name))
+    return cls
+
+Canvas = _inject_schema_methods(Canvas)
 

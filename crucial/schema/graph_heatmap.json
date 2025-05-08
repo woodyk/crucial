@@ -1,0 +1,49 @@
+{
+  "name": "graph_heatmap",
+  "description": "Render a numeric matrix as a Crucial-themed heatmap.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "canvas_id": {
+        "type": "string",
+        "description": "Canvas to draw on"
+      },
+      "matrix": {
+        "type": "array",
+        "description": "2D array of numbers",
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        }
+      },
+      "color": {
+        "type": "string",
+        "pattern": "^#(?:[0-9a-fA-F]{3}){1,2}$",
+        "description": "Base tint color for cell shading"
+      },
+      "theme": {
+        "type": "string",
+        "enum": [
+          "light",
+          "dark"
+        ],
+        "default": "dark"
+      },
+      "title": {
+        "type": "string",
+        "description": "Optional title displayed above grid"
+      },
+      "transparent": {
+        "type": "boolean",
+        "default": false
+      }
+    },
+    "required": [
+      "canvas_id",
+      "matrix",
+      "color"
+    ]
+  }
+}

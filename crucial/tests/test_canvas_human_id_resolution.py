@@ -5,7 +5,7 @@
 # Description: Test human-readable canvas ID with ThreeJS rendering
 # Author: Ms. White
 # Created: 2025-05-07
-# Modified: 2025-05-07 13:48:03
+# Modified: 2025-05-07 23:55:32
 
 import requests
 import json
@@ -71,7 +71,7 @@ def inject_threejs(canvas_id):
     """
 
     payload = {
-        "action": "canvas_render_threejs",
+        "action": "render_threejs",
         "params": {
             "canvas_id": canvas_id,
             "script": full_html
