@@ -8,51 +8,51 @@
         "type": "string",
         "description": "Canvas to render to"
       },
-      "data": {
+      "x_values": {
         "type": "array",
-        "description": "Array of {x, y} coordinate objects",
-        "items": {
-          "type": "object",
-          "properties": {
-            "x": {
-              "type": "number"
-            },
-            "y": {
-              "type": "number"
-            }
-          },
-          "required": [
-            "x",
-            "y"
-          ]
-        }
+        "items": { "type": "number" },
+        "description": "List of x values for the line"
+      },
+      "y_values": {
+        "type": "array",
+        "items": { "type": "number" },
+        "description": "List of y values for the line"
       },
       "color": {
         "type": "string",
         "pattern": "^#(?:[0-9a-fA-F]{3}){1,2}$",
-        "description": "Base color for line and points"
-      },
-      "theme": {
-        "type": "string",
-        "enum": [
-          "light",
-          "dark"
-        ],
-        "default": "dark"
+        "description": "Hex color code for the line (e.g. '#00ffcc')"
       },
       "title": {
         "type": "string",
         "description": "Optional chart title"
       },
+      "theme": {
+        "type": "string",
+        "enum": ["light", "dark"],
+        "default": "dark",
+        "description": "Visual theme"
+      },
       "transparent": {
         "type": "boolean",
-        "default": false
+        "default": false,
+        "description": "Render on transparent background"
+      },
+      "x_label": {
+        "type": "string",
+        "description": "Label for x-axis"
+      },
+      "y_label": {
+        "type": "string",
+        "description": "Label for y-axis"
       }
     },
     "required": [
       "canvas_id",
-      "data",
+      "x_values",
+      "y_values",
       "color"
     ]
   }
 }
+

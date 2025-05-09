@@ -1,60 +1,47 @@
 {
   "name": "graph_bar",
-  "description": "Draw a Crucial-styled bar chart on the canvas.",
+  "description": "Render a vertical bar chart with multiple bars, label text, dynamic sizing, and canvas styling.",
   "parameters": {
     "type": "object",
     "properties": {
       "canvas_id": {
         "type": "string",
-        "description": "The canvas to draw the chart on"
+        "description": "Unique ID of the canvas to render on (e.g., 'canvas_001')"
       },
-      "data": {
+      "labels": {
         "type": "array",
-        "description": "List of bar entries with labels and values",
-        "items": {
-          "type": "object",
-          "properties": {
-            "label": {
-              "type": "string"
-            },
-            "value": {
-              "type": "number"
-            }
-          },
-          "required": [
-            "label",
-            "value"
-          ]
-        }
+        "items": { "type": "string" },
+        "minItems": 2,
+        "description": "List of labels for each bar (e.g., ['Q1', 'Q2', 'Q3', 'Q4'])"
+      },
+      "values": {
+        "type": "array",
+        "items": { "type": "number" },
+        "minItems": 2,
+        "description": "List of numeric values for bar heights (e.g., [20, 40, 35, 50])"
       },
       "color": {
         "type": "string",
         "pattern": "^#(?:[0-9a-fA-F]{3}){1,2}$",
-        "description": "Base hex color for generating palette"
-      },
-      "theme": {
-        "type": "string",
-        "enum": [
-          "light",
-          "dark"
-        ],
-        "default": "dark",
-        "description": "Graph background + text theme"
+        "description": "Base color in hex format for the bar fill (e.g., '#3366cc')"
       },
       "title": {
         "type": "string",
-        "description": "Optional chart title"
+        "description": "Optional title displayed above the chart (e.g., 'Revenue by Quarter')"
+      },
+      "theme": {
+        "type": "string",
+        "enum": ["light", "dark"],
+        "default": "dark",
+        "description": "Canvas color theme: 'light' or 'dark'. Default is 'dark'."
       },
       "transparent": {
         "type": "boolean",
         "default": false,
-        "description": "True to skip background fill"
+        "description": "If true, background will not be rendered (transparent canvas)"
       }
     },
-    "required": [
-      "canvas_id",
-      "data",
-      "color"
-    ]
+    "required": ["canvas_id", "labels", "values", "color"]
   }
 }
+

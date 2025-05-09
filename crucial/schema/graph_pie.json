@@ -6,54 +6,40 @@
     "properties": {
       "canvas_id": {
         "type": "string",
-        "description": "The canvas to render to"
+        "description": "Target canvas identifier."
       },
-      "data": {
+      "labels": {
         "type": "array",
-        "description": "List of segments with labels and values",
-        "items": {
-          "type": "object",
-          "properties": {
-            "label": {
-              "type": "string"
-            },
-            "value": {
-              "type": "number"
-            }
-          },
-          "required": [
-            "label",
-            "value"
-          ]
-        }
+        "items": { "type": "string" },
+        "description": "Labels for each pie slice. Must align with values."
+      },
+      "values": {
+        "type": "array",
+        "items": { "type": "number" },
+        "description": "Values for each pie slice. Determines slice proportion."
       },
       "color": {
         "type": "string",
         "pattern": "^#(?:[0-9a-fA-F]{3}){1,2}$",
-        "description": "Base hex color for segment palette"
+        "description": "Hex base color for shading (e.g., #ff6600)."
       },
       "theme": {
         "type": "string",
-        "enum": [
-          "light",
-          "dark"
-        ],
-        "default": "dark"
+        "enum": ["light", "dark"],
+        "default": "dark",
+        "description": "Theme mode for background and label contrast."
       },
       "title": {
         "type": "string",
-        "description": "Optional title above the pie chart"
+        "description": "Optional title text to show above chart."
       },
       "transparent": {
         "type": "boolean",
         "default": false,
-        "description": "If true, no background is drawn"
+        "description": "Whether the background is transparent or theme-colored."
       }
     },
-    "required": [
-      "canvas_id",
-      "data",
-      "color"
-    ]
+    "required": ["canvas_id", "labels", "values", "color"]
   }
 }
+

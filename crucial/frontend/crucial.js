@@ -2,7 +2,7 @@
 // Author: Crucial
 // Description: Real-time animated frontend renderer for Crucial Canvas
 // Created: 2025-05-06
-// Modified: 2025-05-08 17:45:29
+// Modified: 2025-05-09 19:16:37
 
 import {
   config,
@@ -58,6 +58,19 @@ function fadeInBackground(color, duration) {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         if (step >= steps) clearInterval(id);
     }, interval);
+}
+
+function isLightColor(hex) {
+    if (!hex || typeof hex !== "string" || !hex.startsWith("#")) return false;
+    const c = hex.length === 4
+        ? "#" + hex[1] + hex[1] + hex[2] + hex[2] + hex[3] + hex[3]
+        : hex;
+    const r = parseInt(c.substring(1, 3), 16);
+    const g = parseInt(c.substring(3, 5), 16);
+    const b = parseInt(c.substring(5, 7), 16);
+    if (isNaN(r) || isNaN(g) || isNaN(b)) return false;
+    const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+    return luminance > 186;
 }
 
 function showCanvasName(name) {
@@ -390,28 +403,37 @@ async function renderClear(entry) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
 
-
-
 async function renderGraphBar(entry) {
-    const { id, data, color, theme = "dark", title = "", transparent = false } = entry.params;
-    if (!data || !data.length || !color) return;
+    const {
+        labels,
+        values,
+        color,
+        title = ""
+    } = entry.params;
+
+    const theme = entry.params.theme ?? "dark";
+    const transparent = entry.params.transparent ?? false;
+
+    if (!labels || !values || labels.length !== values.length || labels.length < 2 || !color) return;
 
     const style = themeStyles[theme] || themeStyles["dark"];
-    const colors = generateCrucialShadesN(color, data.length);
+    const barColors = generateCrucialShadesN(color, labels.length);
 
     const margin = 40;
     const titlePad = title ? 30 : 0;
-    const chartWidth = canvas.width - margin * 2;
-    const chartHeight = canvas.height - margin * 2 - titlePad;
-    const barWidth = chartWidth / data.length;
-    const maxVal = Math.max(...data.map(d => d.value));
+    const spacing = 10;
+    const chartWidth = canvas.width - 2 * margin;
+    const chartHeight = canvas.height - 2 * margin - titlePad;
+    const barWidth = (chartWidth - spacing * (labels.length - 1)) / labels.length;
+    const maxValue = Math.max(...values);
 
-    // Optional transparency
+    // Background
     if (!transparent) {
         ctx.fillStyle = style.background;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
+    // Title
     if (title) {
         ctx.fillStyle = style.text;
         ctx.font = "bold 18px Courier New";
@@ -419,58 +441,101 @@ async function renderGraphBar(entry) {
         ctx.fillText(title, canvas.width / 2, margin);
     }
 
-    ctx.textAlign = "center";
-    ctx.textBaseline = "bottom";
-    ctx.font = config.graph.bar.labelFont;
+    // Bars + Labels
+    for (let i = 0; i < labels.length; i++) {
+        const x = margin + i * (barWidth + spacing);
+        const barHeight = (values[i] / maxValue) * chartHeight;
+        const y = canvas.height - margin - barHeight;
 
-    for (let i = 0; i < data.length; i++) {
-        const { label, value } = data[i];
-        const x = margin + i * barWidth;
-        const y = canvas.height - margin;
-        const barHeight = (value / maxVal) * chartHeight;
+        const radius = Math.min(barWidth, barHeight) * 0.15;
 
-        // Rounded bar
-        const bw = barWidth * 0.8;
-        const bx = x + (barWidth - bw) / 2;
-        const by = y - barHeight;
-        const radius = Math.max(4, bw * 0.1);
-
+        ctx.fillStyle = barColors[i];
         ctx.beginPath();
-        ctx.moveTo(bx + radius, by);
-        ctx.lineTo(bx + bw - radius, by);
-        ctx.quadraticCurveTo(bx + bw, by, bx + bw, by + radius);
-        ctx.lineTo(bx + bw, y);
-        ctx.lineTo(bx, y);
-        ctx.lineTo(bx, by + radius);
-        ctx.quadraticCurveTo(bx, by, bx + radius, by);
+        ctx.moveTo(x, y + barHeight);                         // bottom-left
+        ctx.lineTo(x, y + radius);                            // up to top-left corner
+        ctx.arcTo(x, y, x + radius, y, radius);               // top-left corner
+        ctx.lineTo(x + barWidth - radius, y);                 // across top
+        ctx.arcTo(x + barWidth, y, x + barWidth, y + radius, radius); // top-right corner
+        ctx.lineTo(x + barWidth, y + barHeight);              // down to bottom-right
         ctx.closePath();
-
-        ctx.fillStyle = colors[i % colors.length];
         ctx.fill();
 
+        // Label
         ctx.fillStyle = style.text;
-        ctx.fillText(label, x + barWidth / 2, y + 14);
+        ctx.font = config.graph.bar.labelFont;
+        ctx.textAlign = "center";
+        ctx.fillText(labels[i], x + barWidth / 2, canvas.height - margin + 14);
 
-        await sleep(80 * config.drawing.speed);
+        await sleep(40 * config.drawing.speed);
     }
 }
 
+
+function drawSmoothLine(ctx, points, tension = 0.5) {
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+
+    for (let i = 0; i < points.length - 1; i++) {
+        const p0 = points[i > 0 ? i - 1 : i];
+        const p1 = points[i];
+        const p2 = points[i + 1];
+        const p3 = points[i + 2 < points.length ? i + 2 : i + 1];
+
+        const cp1x = p1.x + (p2.x - p0.x) / 6 * tension;
+        const cp1y = p1.y + (p2.y - p0.y) / 6 * tension;
+
+        const cp2x = p2.x - (p3.x - p1.x) / 6 * tension;
+        const cp2y = p2.y - (p3.y - p1.y) / 6 * tension;
+
+        ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+    }
+
+    ctx.stroke();
+}
+
 async function renderGraphLine(entry) {
-    const { data, theme = "dark", color, title = "", transparent = false } = entry.params;
-    if (!data || data.length < 2 || !color) return;
+    const {
+        x_values,
+        y_values,
+        color,
+        title = "",
+        x_label = "",
+        y_label = ""
+    } = entry.params;
+
+    const theme = entry.params.theme ?? "dark";
+    const transparent = entry.params.transparent ?? false;
+
+    if (!x_values || !y_values || x_values.length !== y_values.length || x_values.length < 2 || !color) return;
 
     const style = themeStyles[theme] || themeStyles["dark"];
-    const palette = generateCrucialShadesN(color, 1); // single line, 1 color
-    const stroke = palette[0];
+    const stroke = generateCrucialShadesN(color, 1)[0];
 
     const margin = 40;
     const titlePad = title ? 30 : 0;
+    const chartWidth = canvas.width - 2 * margin;
+    const chartHeight = canvas.height - 2 * margin - titlePad;
 
+    const minX = Math.min(...x_values);
+    const maxX = Math.max(...x_values);
+    const minY = Math.min(...y_values);
+    const maxY = Math.max(...y_values);
+
+    const scaleX = val => margin + ((val - minX) / (maxX - minX || 1)) * chartWidth;
+    const scaleY = val => canvas.height - margin - ((val - minY) / (maxY - minY || 1)) * chartHeight;
+
+    const points = x_values.map((x, i) => ({
+        x: scaleX(x),
+        y: scaleY(y_values[i])
+    }));
+
+    // Background
     if (!transparent) {
         ctx.fillStyle = style.background;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
+    // Title
     if (title) {
         ctx.fillStyle = style.text;
         ctx.font = "bold 18px Courier New";
@@ -478,28 +543,76 @@ async function renderGraphLine(entry) {
         ctx.fillText(title, canvas.width / 2, margin);
     }
 
-    ctx.beginPath();
-    ctx.moveTo(data[0].x, data[0].y);
+    // Grid
+    ctx.strokeStyle = style.grid;
+    ctx.setLineDash([4, 4]);
+    ctx.lineWidth = 1;
+
+    for (let i = 0; i < x_values.length; i++) {
+        const x = scaleX(x_values[i]);
+        ctx.beginPath();
+        ctx.moveTo(x, margin);
+        ctx.lineTo(x, canvas.height - margin);
+        ctx.stroke();
+    }
+
+    const steps = 5;
+    for (let j = 0; j <= steps; j++) {
+        const y = margin + titlePad + (chartHeight * j / steps);
+        ctx.beginPath();
+        ctx.moveTo(margin, y);
+        ctx.lineTo(canvas.width - margin, y);
+        ctx.stroke();
+    }
+
+    ctx.setLineDash([]);
+
+    // Smooth line
     ctx.strokeStyle = stroke;
     ctx.lineWidth = 2;
+    drawSmoothLine(ctx, points, 0.5);  // ← uses shared global function
 
-    for (let i = 1; i < data.length; i++) {
-        ctx.lineTo(data[i].x, data[i].y);
-        ctx.stroke();
-        await sleep(60 * config.drawing.speed);
+    // Axis labels
+    if (x_label) {
+        ctx.fillStyle = style.text;
+        ctx.font = "12px Courier New";
+        ctx.textAlign = "center";
+        ctx.fillText(x_label, canvas.width / 2, canvas.height - 8);
+    }
+
+    if (y_label) {
+        ctx.save();
+        ctx.translate(12, canvas.height / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.textAlign = "center";
+        ctx.fillStyle = style.text;
+        ctx.font = "12px Courier New";
+        ctx.fillText(y_label, 0, 0);
+        ctx.restore();
     }
 }
 
 async function renderGraphPie(entry) {
-    const { data, theme = "dark", color, title = "", transparent = false } = entry.params;
-    if (!data || !data.length || !color) return;
+    const {
+        labels,
+        values,
+        color,
+        title = ""
+    } = entry.params;
+
+    const theme = entry.params.theme ?? "dark";
+    const transparent = entry.params.transparent ?? false;
+
+    if (!labels || !values || labels.length !== values.length || labels.length < 2 || !color) return;
 
     const style = themeStyles[theme] || themeStyles["dark"];
-    const colors = generateCrucialShadesN(color, data.length);
-    const cx = canvas.width / 2;
-    const cy = canvas.height / 2;
-    const radius = Math.min(cx, cy) * 0.8;
-    const total = data.reduce((sum, d) => sum + d.value, 0);
+    const shades = generateCrucialShadesN(color, labels.length);
+
+    const margin = 40;
+    const radius = Math.min(canvas.width, canvas.height) / 2 - margin;
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2 + 10;
+    const total = values.reduce((a, b) => a + b, 0);
 
     if (!transparent) {
         ctx.fillStyle = style.background;
@@ -510,72 +623,180 @@ async function renderGraphPie(entry) {
         ctx.fillStyle = style.text;
         ctx.font = "bold 18px Courier New";
         ctx.textAlign = "center";
-        ctx.fillText(title, canvas.width / 2, 30);
+        ctx.fillText(title, canvas.width / 2, margin);
     }
 
-    let angle = 0;
-    for (let i = 0; i < data.length; i++) {
-        const slice = (data[i].value / total) * 2 * Math.PI;
-        const end = angle + slice;
+    let angleStart = -Math.PI / 2;
+
+    for (let i = 0; i < labels.length; i++) {
+        const angle = (values[i] / total) * Math.PI * 2;
+        const angleEnd = angleStart + angle;
 
         ctx.beginPath();
-        ctx.moveTo(cx, cy);
-        ctx.arc(cx, cy, radius, angle, end);
+        ctx.moveTo(centerX, centerY);
+        ctx.arc(centerX, centerY, radius, angleStart, angleEnd);
         ctx.closePath();
-
-        ctx.fillStyle = colors[i % colors.length];
+        ctx.fillStyle = shades[i];
         ctx.fill();
 
-        // Label
-        const mid = (angle + end) / 2;
-        const lx = cx + (radius * 0.6) * Math.cos(mid);
-        const ly = cy + (radius * 0.6) * Math.sin(mid);
-        ctx.fillStyle = style.text;
+        const midAngle = angleStart + angle / 2;
+        const labelX = centerX + Math.cos(midAngle) * radius * 0.7;
+        const labelY = centerY + Math.sin(midAngle) * radius * 0.7;
+
+        const textColor = isLightColor(shades[i]) ? "#000000" : "#ffffff";
+        ctx.fillStyle = textColor;
         ctx.font = config.graph.pie.labelFont;
-        ctx.fillText(data[i].label, lx, ly);
-
-        angle = end;
-        await sleep(100 * config.drawing.speed);
-    }
-}
-
-async function renderGraphHeatmap(entry) {
-    const { matrix, theme = "dark", color, title = "", transparent = false } = entry.params;
-    if (!matrix || !matrix.length || !color) return;
-
-    const style = themeStyles[theme] || themeStyles["dark"];
-    const rows = matrix.length;
-    const cols = matrix[0].length;
-    const cellW = canvas.width / cols;
-    const cellH = canvas.height / rows;
-    const flat = matrix.flat();
-    const min = Math.min(...flat);
-    const max = Math.max(...flat);
-
-    if (!transparent) {
-        ctx.fillStyle = style.background;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
-
-    if (title) {
-        ctx.fillStyle = style.text;
-        ctx.font = "bold 18px Courier New";
         ctx.textAlign = "center";
-        ctx.fillText(title, canvas.width / 2, 30);
-    }
+        ctx.fillText(labels[i], labelX, labelY);
 
-    const baseHSL = hexToHSL(color);
-    for (let y = 0; y < rows; y++) {
-        for (let x = 0; x < cols; x++) {
-            const v = matrix[y][x];
-            const norm = (v - min) / (max - min || 1); // Avoid div by 0
-            const shade = HSLtoHex(baseHSL[0], baseHSL[1], 20 + norm * 50);
-            ctx.fillStyle = shade;
-            ctx.fillRect(x * cellW, y * cellH, cellW, cellH);
-        }
+        angleStart = angleEnd;
+
         await sleep(20 * config.drawing.speed);
     }
 }
+
+async function renderGraphDonut(entry) {
+    const {
+        labels,
+        values,
+        color,
+        title = ""
+    } = entry.params;
+
+    const theme = entry.params.theme ?? "dark";
+    const transparent = entry.params.transparent ?? false;
+
+    if (!labels || !values || labels.length !== values.length || labels.length < 2 || !color) return;
+
+    const style = themeStyles[theme] || themeStyles["dark"];
+    const shades = generateCrucialShadesN(color, labels.length);
+
+    const margin = 40;
+    const outerRadius = Math.min(canvas.width, canvas.height) / 2 - margin;
+    const innerRadius = outerRadius * 0.55;
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2 + 10;
+    const total = values.reduce((a, b) => a + b, 0);
+
+    // Background
+    if (!transparent) {
+        ctx.fillStyle = style.background;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    // Title
+    if (title) {
+        ctx.fillStyle = style.text;
+        ctx.font = "bold 18px Courier New";
+        ctx.textAlign = "center";
+        ctx.fillText(title, canvas.width / 2, margin);
+    }
+
+    let angleStart = -Math.PI / 2;
+
+    for (let i = 0; i < labels.length; i++) {
+        const angle = (values[i] / total) * Math.PI * 2;
+        const angleEnd = angleStart + angle;
+
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, outerRadius, angleStart, angleEnd);
+        ctx.arc(centerX, centerY, innerRadius, angleEnd, angleStart, true);
+        ctx.closePath();
+        ctx.fillStyle = shades[i];
+        ctx.fill();
+
+        // Slice label
+        const midAngle = angleStart + angle / 2;
+        const labelX = centerX + Math.cos(midAngle) * (outerRadius + innerRadius) / 2;
+        const labelY = centerY + Math.sin(midAngle) * (outerRadius + innerRadius) / 2;
+
+        const textColor = isLightColor(shades[i]) ? "#000000" : "#ffffff";
+        ctx.fillStyle = textColor;
+        ctx.font = config.graph.pie.labelFont;
+        ctx.textAlign = "center";
+        ctx.fillText(labels[i], labelX, labelY);
+
+        angleStart = angleEnd;
+
+        await sleep(20 * config.drawing.speed);
+    }
+
+    // Center highlight value
+    const topValue = Math.max(...values);
+    const topLabel = labels[values.indexOf(topValue)];
+
+    ctx.fillStyle = style.text;
+    ctx.font = "bold 16px Courier New";
+    ctx.textAlign = "center";
+    ctx.fillText(topLabel, centerX, centerY + 6);
+}
+
+
+async function renderGraphHeatmap(entry) {
+    const {
+        matrix,
+        color,
+        theme = "dark",
+        title = "",
+        transparent = false
+    } = entry.params;
+
+    if (!matrix || !Array.isArray(matrix) || matrix.length === 0 || !color) return;
+
+    const style = themeStyles[theme] || themeStyles["dark"];
+    const tint = generateCrucialShadesN(color, 100); // Up to 100 shades for safety
+
+    const margin = 40;
+    const titlePad = title ? 30 : 0;
+    const width = canvas.width - 2 * margin;
+    const height = canvas.height - 2 * margin - titlePad;
+
+    const rows = matrix.length;
+    const cols = matrix[0].length;
+    const cellWidth = width / cols;
+    const cellHeight = height / rows;
+
+    let min = Infinity;
+    let max = -Infinity;
+
+    for (let row of matrix) {
+        for (let val of row) {
+            if (val < min) min = val;
+            if (val > max) max = val;
+        }
+    }
+
+    // Background
+    if (!transparent) {
+        ctx.fillStyle = style.background;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    // Title with correct theme text color
+    if (title) {
+        ctx.fillStyle = style.text;  // Fixed: use theme-defined text color
+        ctx.font = "bold 18px Courier New";
+        ctx.textAlign = "center";
+        ctx.fillText(title, canvas.width / 2, margin);
+    }
+
+    for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+            const value = matrix[y][x];
+            const norm = (value - min) / (max - min || 1);
+            const shadeIdx = Math.floor(norm * (tint.length - 1));
+            ctx.fillStyle = tint[shadeIdx];
+            ctx.fillRect(
+                margin + x * cellWidth,
+                margin + titlePad + y * cellHeight,
+                cellWidth,
+                cellHeight
+            );
+            await sleep(2 * config.drawing.speed);
+        }
+    }
+}
+
 
 async function renderGraphHistogram(entry) {
     const { values, bins = 10, normalize = false, color, theme = "dark", title = "", transparent = false } = entry.params;
@@ -631,293 +852,627 @@ async function renderGraphHistogram(entry) {
 }
 
 async function renderGraphScatter(entry) {
-    const { points, color, theme = "dark", title = "", transparent = false } = entry.params;
-    if (!points || !points.length || !color) return;
+    const {
+        x_values,
+        y_values,
+        color,
+        theme = "dark",
+        title = "",
+        transparent = false,
+        x_label = "",
+        y_label = ""
+    } = entry.params;
+
+    if (!x_values || !y_values || x_values.length !== y_values.length || x_values.length < 2 || !color) return;
 
     const style = themeStyles[theme] || themeStyles["dark"];
+    const pointColor = generateCrucialShadesN(color, 1)[0];
 
+    const margin = 40;
+    const titlePad = title ? 30 : 0;
+    const chartWidth = canvas.width - 2 * margin;
+    const chartHeight = canvas.height - 2 * margin - titlePad;
+
+    const minX = Math.min(...x_values);
+    const maxX = Math.max(...x_values);
+    const minY = Math.min(...y_values);
+    const maxY = Math.max(...y_values);
+
+    const scaleX = val => margin + ((val - minX) / (maxX - minX || 1)) * chartWidth;
+    const scaleY = val => canvas.height - margin - ((val - minY) / (maxY - minY || 1)) * chartHeight;
+
+    // Background
     if (!transparent) {
         ctx.fillStyle = style.background;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
+    // Title
     if (title) {
         ctx.fillStyle = style.text;
         ctx.font = "bold 18px Courier New";
         ctx.textAlign = "center";
-        ctx.fillText(title, canvas.width / 2, 30);
+        ctx.fillText(title, canvas.width / 2, margin);
     }
 
-    ctx.fillStyle = color;
-    for (let i = 0; i < points.length; i++) {
-        const { x, y } = points[i];
+    // Grid lines
+    ctx.strokeStyle = style.grid || "#444";
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+
+    for (let i = 0; i < x_values.length; i++) {
+        const x = scaleX(x_values[i]);
+        ctx.beginPath();
+        ctx.moveTo(x, margin);
+        ctx.lineTo(x, canvas.height - margin);
+        ctx.stroke();
+    }
+
+    const steps = 5;
+    for (let j = 0; j <= steps; j++) {
+        const yVal = minY + (j / steps) * (maxY - minY);
+        const y = scaleY(yVal);
+        ctx.beginPath();
+        ctx.moveTo(margin, y);
+        ctx.lineTo(canvas.width - margin, y);
+        ctx.stroke();
+    }
+
+    ctx.setLineDash([]);
+
+    // Points
+    for (let i = 0; i < x_values.length; i++) {
+        const x = scaleX(x_values[i]);
+        const y = scaleY(y_values[i]);
         ctx.beginPath();
         ctx.arc(x, y, 4, 0, 2 * Math.PI);
+        ctx.fillStyle = pointColor;
         ctx.fill();
         await sleep(20 * config.drawing.speed);
+    }
+
+    // Axis labels
+    if (x_label) {
+        ctx.fillStyle = style.text;
+        ctx.font = "12px Courier New";
+        ctx.textAlign = "center";
+        ctx.fillText(x_label, canvas.width / 2, canvas.height - 8);
+    }
+
+    if (y_label) {
+        ctx.save();
+        ctx.translate(12, canvas.height / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.textAlign = "center";
+        ctx.fillStyle = style.text;
+        ctx.font = "12px Courier New";
+        ctx.fillText(y_label, 0, 0);
+        ctx.restore();
     }
 }
 
 async function renderGraphBubble(entry) {
-    const { bubbles, color, theme = "dark", title = "", transparent = false } = entry.params;
-    if (!bubbles || !bubbles.length || !color) return;
+    const {
+        x_values,
+        y_values,
+        sizes,
+        color,
+        theme = "dark",
+        title = "",
+        transparent = false,
+        x_label = "",
+        y_label = ""
+    } = entry.params;
+
+    if (!x_values || !y_values || !sizes ||
+        x_values.length !== y_values.length ||
+        x_values.length !== sizes.length ||
+        x_values.length < 2 || !color) return;
 
     const style = themeStyles[theme] || themeStyles["dark"];
-    const palette = generateCrucialShadesN(color, bubbles.length);
+    const bubbleColor = generateCrucialShadesN(color, 1)[0];
 
+    const margin = 40;
+    const titlePad = title ? 30 : 0;
+    const chartWidth = canvas.width - 2 * margin;
+    const chartHeight = canvas.height - 2 * margin - titlePad;
+
+    const minX = Math.min(...x_values);
+    const maxX = Math.max(...x_values);
+    const minY = Math.min(...y_values);
+    const maxY = Math.max(...y_values);
+    const minSize = Math.min(...sizes);
+    const maxSize = Math.max(...sizes);
+
+    const scaleX = val => margin + ((val - minX) / (maxX - minX || 1)) * chartWidth;
+    const scaleY = val => canvas.height - margin - ((val - minY) / (maxY - minY || 1)) * chartHeight;
+    const scaleR = val => 5 + ((val - minSize) / (maxSize - minSize || 1)) * 30;
+
+    // Background
     if (!transparent) {
         ctx.fillStyle = style.background;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
+    // Title
     if (title) {
         ctx.fillStyle = style.text;
         ctx.font = "bold 18px Courier New";
         ctx.textAlign = "center";
-        ctx.fillText(title, canvas.width / 2, 30);
+        ctx.fillText(title, canvas.width / 2, margin);
     }
 
-    for (let i = 0; i < bubbles.length; i++) {
-        const { x, y, size } = bubbles[i];
+    // Grid
+    ctx.strokeStyle = style.grid || "#444";
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+
+    for (let i = 0; i < x_values.length; i++) {
+        const x = scaleX(x_values[i]);
         ctx.beginPath();
-        ctx.arc(x, y, size, 0, 2 * Math.PI);
-        ctx.fillStyle = palette[i % palette.length];
+        ctx.moveTo(x, margin);
+        ctx.lineTo(x, canvas.height - margin);
+        ctx.stroke();
+    }
+
+    const steps = 5;
+    for (let j = 0; j <= steps; j++) {
+        const y = margin + titlePad + (chartHeight * j / steps);
+        ctx.beginPath();
+        ctx.moveTo(margin, y);
+        ctx.lineTo(canvas.width - margin, y);
+        ctx.stroke();
+    }
+
+    ctx.setLineDash([]);
+
+    // Bubbles
+    for (let i = 0; i < x_values.length; i++) {
+        const x = scaleX(x_values[i]);
+        const y = scaleY(y_values[i]);
+        const r = scaleR(sizes[i]);
+
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, 2 * Math.PI);
+        ctx.fillStyle = bubbleColor;
         ctx.fill();
+
         await sleep(40 * config.drawing.speed);
+    }
+
+    // Labels
+    if (x_label) {
+        ctx.fillStyle = style.text;
+        ctx.font = "12px Courier New";
+        ctx.textAlign = "center";
+        ctx.fillText(x_label, canvas.width / 2, canvas.height - 8);
+    }
+
+    if (y_label) {
+        ctx.save();
+        ctx.translate(12, canvas.height / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.textAlign = "center";
+        ctx.fillStyle = style.text;
+        ctx.font = "12px Courier New";
+        ctx.fillText(y_label, 0, 0);
+        ctx.restore();
     }
 }
 
 async function renderGraphArea(entry) {
-    const { data, color, theme = "dark", title = "", transparent = false } = entry.params;
-    if (!data || data.length < 2 || !color) return;
+    const {
+        x_values,
+        y_values,
+        color,
+        title = "",
+        x_label = "",
+        y_label = ""
+    } = entry.params;
+
+    const theme = entry.params.theme ?? "dark";
+    const transparent = entry.params.transparent ?? false;
+
+    if (!x_values || !y_values || x_values.length !== y_values.length || x_values.length < 2 || !color) return;
 
     const style = themeStyles[theme] || themeStyles["dark"];
     const stroke = generateCrucialShadesN(color, 1)[0];
 
+    const margin = 40;
+    const titlePad = title ? 30 : 0;
+    const chartWidth = canvas.width - 2 * margin;
+    const chartHeight = canvas.height - 2 * margin - titlePad;
+
+    const minX = Math.min(...x_values);
+    const maxX = Math.max(...x_values);
+    const minY = Math.min(...y_values);
+    const maxY = Math.max(...y_values);
+
+    const scaleX = val => margin + ((val - minX) / (maxX - minX || 1)) * chartWidth;
+    const scaleY = val => canvas.height - margin - ((val - minY) / (maxY - minY || 1)) * chartHeight;
+
+    const points = x_values.map((x, i) => ({
+        x: scaleX(x),
+        y: scaleY(y_values[i])
+    }));
+
+    // Background
     if (!transparent) {
         ctx.fillStyle = style.background;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
+    // Title
     if (title) {
         ctx.fillStyle = style.text;
         ctx.font = "bold 18px Courier New";
         ctx.textAlign = "center";
-        ctx.fillText(title, canvas.width / 2, 30);
+        ctx.fillText(title, canvas.width / 2, margin);
     }
 
+    // Grid
+    ctx.strokeStyle = style.grid;
+    ctx.setLineDash([4, 4]);
+    ctx.lineWidth = 1;
+
+    for (let i = 0; i < x_values.length; i++) {
+        const x = scaleX(x_values[i]);
+        ctx.beginPath();
+        ctx.moveTo(x, margin);
+        ctx.lineTo(x, canvas.height - margin);
+        ctx.stroke();
+    }
+
+    const steps = 5;
+    for (let j = 0; j <= steps; j++) {
+        const y = margin + titlePad + (chartHeight * j / steps);
+        ctx.beginPath();
+        ctx.moveTo(margin, y);
+        ctx.lineTo(canvas.width - margin, y);
+        ctx.stroke();
+    }
+
+    ctx.setLineDash([]);
+
+    // Fill Area Under Curve
     ctx.beginPath();
-    ctx.moveTo(data[0].x, canvas.height - 40);  // bottom edge
-    for (let i = 0; i < data.length; i++) {
-        ctx.lineTo(data[i].x, data[i].y);
-    }
-    ctx.lineTo(data[data.length - 1].x, canvas.height - 40);
-    ctx.closePath();
+    ctx.moveTo(points[0].x, canvas.height - margin);
+    ctx.lineTo(points[0].x, points[0].y);
 
-    ctx.fillStyle = stroke + "44";
+    for (let i = 0; i < points.length - 1; i++) {
+        const p0 = points[i > 0 ? i - 1 : i];
+        const p1 = points[i];
+        const p2 = points[i + 1];
+        const p3 = points[i + 2 < points.length ? i + 2 : i + 1];
+
+        const cp1x = p1.x + (p2.x - p0.x) / 6 * 0.5;
+        const cp1y = p1.y + (p2.y - p0.y) / 6 * 0.5;
+        const cp2x = p2.x - (p3.x - p1.x) / 6 * 0.5;
+        const cp2y = p2.y - (p3.y - p1.y) / 6 * 0.5;
+
+        ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+    }
+
+    ctx.lineTo(points.at(-1).x, canvas.height - margin);
+    ctx.closePath();
+    ctx.fillStyle = stroke + "33";
     ctx.fill();
+
+    // Draw the smoothed top line
     ctx.strokeStyle = stroke;
     ctx.lineWidth = 2;
-    ctx.stroke();
+    drawSmoothLine(ctx, points);
+
+    // Axis labels
+    if (x_label) {
+        ctx.fillStyle = style.text;
+        ctx.font = "12px Courier New";
+        ctx.textAlign = "center";
+        ctx.fillText(x_label, canvas.width / 2, canvas.height - 8);
+    }
+
+    if (y_label) {
+        ctx.save();
+        ctx.translate(12, canvas.height / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.textAlign = "center";
+        ctx.fillStyle = style.text;
+        ctx.font = "12px Courier New";
+        ctx.fillText(y_label, 0, 0);
+        ctx.restore();
+    }
 }
 
+
 async function renderGraphRadar(entry) {
-    const { labels, values, color, theme = "dark", title = "", transparent = false } = entry.params;
-    if (!labels || !values || labels.length !== values.length || !color) return;
+    const {
+        labels,
+        values,
+        color,
+        title = ""
+    } = entry.params;
+
+    const theme = entry.params.theme ?? "dark";
+    const transparent = entry.params.transparent ?? false;
+
+    if (!labels || !values || labels.length !== values.length || labels.length < 3 || !color) return;
 
     const style = themeStyles[theme] || themeStyles["dark"];
-    const cx = canvas.width / 2;
-    const cy = canvas.height / 2;
-    const radius = Math.min(cx, cy) * 0.75;
-    const count = labels.length;
-    const max = Math.max(...values);
-    const angleStep = (2 * Math.PI) / count;
-    const line = generateCrucialShadesN(color, 1)[0];
+    const stroke = generateCrucialShadesN(color, 1)[0];
 
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2 + 10;
+    const radius = Math.min(canvas.width, canvas.height) / 2 - 50;
+    const angleStep = (2 * Math.PI) / labels.length;
+    const maxValue = Math.max(...values);
+
+    // Background
     if (!transparent) {
         ctx.fillStyle = style.background;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
+    // Title
     if (title) {
         ctx.fillStyle = style.text;
         ctx.font = "bold 18px Courier New";
         ctx.textAlign = "center";
-        ctx.fillText(title, canvas.width / 2, 30);
+        ctx.fillText(title, canvas.width / 2, 40);
     }
 
-    // Axis lines
-    ctx.strokeStyle = "#555";
-    for (let i = 0; i < count; i++) {
-        const angle = i * angleStep;
-        const x = cx + radius * Math.cos(angle);
-        const y = cy + radius * Math.sin(angle);
+    // Radar grid: concentric rings + spokes
+    const levels = 5;
+
+    ctx.strokeStyle = style.grid;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+
+    for (let l = 1; l <= levels; l++) {
+        const r = (radius * l) / levels;
         ctx.beginPath();
-        ctx.moveTo(cx, cy);
+        for (let i = 0; i <= labels.length; i++) {
+            const angle = i * angleStep;
+            const x = centerX + r * Math.cos(angle);
+            const y = centerY + r * Math.sin(angle);
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.stroke();
+    }
+
+    for (let i = 0; i < labels.length; i++) {
+        const angle = i * angleStep;
+        const x = centerX + radius * Math.cos(angle);
+        const y = centerY + radius * Math.sin(angle);
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
         ctx.lineTo(x, y);
         ctx.stroke();
-        ctx.fillStyle = style.text;
-        ctx.font = "11px Courier New";
-        ctx.fillText(labels[i], x, y);
     }
 
-    // Data polygon
-    ctx.beginPath();
-    for (let i = 0; i < count; i++) {
+    ctx.setLineDash([]);
+
+    // Radar shape
+    const radarPoints = values.map((v, i) => {
+        const r = (v / maxValue) * radius;
         const angle = i * angleStep;
-        const r = (values[i] / max) * radius;
-        const x = cx + r * Math.cos(angle);
-        const y = cy + r * Math.sin(angle);
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
+        return {
+            x: centerX + r * Math.cos(angle),
+            y: centerY + r * Math.sin(angle)
+        };
+    });
+
+    // Fill shape
+    ctx.beginPath();
+    ctx.moveTo(radarPoints[0].x, radarPoints[0].y);
+    for (let p of radarPoints.slice(1)) {
+        ctx.lineTo(p.x, p.y);
     }
     ctx.closePath();
-    ctx.strokeStyle = line;
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    ctx.fillStyle = line + "33";
+    ctx.fillStyle = stroke + "33";
     ctx.fill();
+
+    // Outline
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(radarPoints[0].x, radarPoints[0].y);
+    for (let p of radarPoints.slice(1)) {
+        ctx.lineTo(p.x, p.y);
+    }
+    ctx.closePath();
+    ctx.stroke();
+
+    // Labels
+    ctx.fillStyle = style.text;
+    ctx.font = "12px Courier New";
+    ctx.textAlign = "center";
+    for (let i = 0; i < labels.length; i++) {
+        const angle = i * angleStep;
+        const x = centerX + (radius + 20) * Math.cos(angle);
+        const y = centerY + (radius + 20) * Math.sin(angle);
+        ctx.fillText(labels[i], x, y);
+    }
 }
 
 async function renderGraphGauge(entry) {
-    const { value, color, label = "", theme = "dark", title = "", transparent = false } = entry.params;
-    if (value == null || value < 0 || value > 100 || !color) return;
+    const {
+        value,
+        label,
+        color,
+        title = ""
+    } = entry.params;
+
+    const theme = entry.params.theme ?? "dark";
+    const transparent = entry.params.transparent ?? false;
+
+    if (typeof value !== "number" || value < 0 || value > 100 || !color) return;
 
     const style = themeStyles[theme] || themeStyles["dark"];
-    const cx = canvas.width / 2;
-    const cy = canvas.height * 0.75;
-    const radius = Math.min(cx, cy) * 0.7;
-    const arcColor = generateCrucialShadesN(color, 1)[0];
+    const stroke = generateCrucialShadesN(color, 1)[0];
+    const arcWidth = 30;
+    const margin = 40;
 
+    const centerX = canvas.width / 2;
+    const radius = Math.min(canvas.width, canvas.height) / 2 - margin;
+
+    // Adjust centerY to visually center arc + label block
+    const arcHeight = radius + arcWidth / 2;
+    const textHeight = 40;
+    const totalHeight = arcHeight + textHeight;
+    const centerY = (canvas.height / 2) + (arcHeight - textHeight / 2) / 2;
+
+    // Background
     if (!transparent) {
         ctx.fillStyle = style.background;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
+    // Title
     if (title) {
         ctx.fillStyle = style.text;
-        ctx.font = "bold 18px Courier New";
+        ctx.font = "bold 20px Courier New";
         ctx.textAlign = "center";
-        ctx.fillText(title, canvas.width / 2, 30);
+        ctx.fillText(title, centerX, margin);
     }
 
-    // Background arc
+    // Gauge background (full arc in dim grid color)
     ctx.beginPath();
-    ctx.arc(cx, cy, radius, Math.PI, 2 * Math.PI);
-    ctx.strokeStyle = "#444";
-    ctx.lineWidth = 12;
+    ctx.lineWidth = arcWidth;
+    ctx.lineCap = "round";
+    ctx.strokeStyle = style.grid;
+    ctx.arc(centerX, centerY, radius, Math.PI, 2 * Math.PI);
     ctx.stroke();
 
-    // Filled arc
+    // Gauge value arc (overlay)
+    const valueAngle = Math.PI + (Math.PI * value / 100);
     ctx.beginPath();
-    ctx.arc(cx, cy, radius, Math.PI, Math.PI + (Math.PI * value / 100));
-    ctx.strokeStyle = arcColor;
-    ctx.lineWidth = 12;
+    ctx.strokeStyle = stroke;
+    ctx.arc(centerX, centerY, radius, Math.PI, valueAngle);
     ctx.stroke();
 
-    // Label
+    // Value %
     ctx.fillStyle = style.text;
-    ctx.font = "16px Courier New";
-    ctx.fillText(`${value}%`, cx, cy - 10);
-    ctx.font = "12px Courier New";
-    ctx.fillText(label, cx, cy + 20);
-}
+    ctx.font = "bold 28px Courier New";
+    ctx.textAlign = "center";
+    ctx.fillText(`${value.toFixed(0)}%`, centerX, centerY + 10);
 
-async function renderGraphDonut(entry) {
-    const { data, color, theme = "dark", title = "", transparent = false } = entry.params;
-    if (!data || !data.length || !color) return;
-
-    const style = themeStyles[theme] || themeStyles["dark"];
-    const cx = canvas.width / 2;
-    const cy = canvas.height / 2;
-    const outer = Math.min(cx, cy) * 0.8;
-    const inner = outer * 0.5;
-    const total = data.reduce((sum, d) => sum + d.value, 0);
-    const palette = generateCrucialShadesN(color, data.length);
-
-    if (!transparent) {
-        ctx.fillStyle = style.background;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
-
-    if (title) {
-        ctx.fillStyle = style.text;
-        ctx.font = "bold 18px Courier New";
-        ctx.textAlign = "center";
-        ctx.fillText(title, canvas.width / 2, 30);
-    }
-
-    let angle = 0;
-    for (let i = 0; i < data.length; i++) {
-        const slice = (data[i].value / total) * 2 * Math.PI;
-        const end = angle + slice;
-
-        ctx.beginPath();
-        ctx.moveTo(cx, cy);
-        ctx.arc(cx, cy, outer, angle, end);
-        ctx.arc(cx, cy, inner, end, angle, true);
-        ctx.closePath();
-
-        ctx.fillStyle = palette[i];
-        ctx.fill();
-
-        const mid = (angle + end) / 2;
-        const lx = cx + (outer + inner) / 2 * Math.cos(mid);
-        const ly = cy + (outer + inner) / 2 * Math.sin(mid);
-        ctx.fillStyle = style.text;
-        ctx.font = "12px Courier New";
-        ctx.fillText(data[i].label, lx, ly);
-
-        angle = end;
-        await sleep(80 * config.drawing.speed);
+    // Lower Label
+    if (label) {
+        ctx.font = "14px Courier New";
+        ctx.fillText(label, centerX, centerY + 36);
     }
 }
-
 
 async function renderGraphWordcloud(entry) {
-    const { words, color, theme = "dark", title = "", transparent = false } = entry.params;
-    if (!words || !words.length || !color) return;
+    const {
+        word_texts,
+        word_values,
+        color,
+        theme = "dark",
+        title = "",
+        transparent = false
+    } = entry.params;
+
+    if (!word_texts || !word_values || word_texts.length !== word_values.length || word_texts.length === 0 || !color) return;
 
     const style = themeStyles[theme] || themeStyles["dark"];
+    const shades = generateCrucialShadesN(color, word_texts.length);
+
+    const margin = 40;
+    const titlePad = title ? 30 : 0;
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
-    const maxVal = Math.max(...words.map(w => w.value));
-    const palette = generateCrucialShadesN(color, words.length);
 
+    const minVal = Math.min(...word_values);
+    const maxVal = Math.max(...word_values);
+
+    // Background
     if (!transparent) {
         ctx.fillStyle = style.background;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
+    // Title
     if (title) {
         ctx.fillStyle = style.text;
         ctx.font = "bold 18px Courier New";
         ctx.textAlign = "center";
-        ctx.fillText(title, canvas.width / 2, 30);
+        ctx.fillText(title, canvas.width / 2, margin);
     }
 
-    // Crude spiral layout
-    let angle = 0;
-    let radius = 0;
-    const step = 15;
+    // Prepare word list sorted by size
+    const wordList = word_texts.map((text, i) => ({
+        text,
+        value: word_values[i],
+        color: shades[i]
+    })).sort((a, b) => b.value - a.value);
 
-    for (let i = 0; i < words.length; i++) {
-        const word = words[i];
-        const size = 10 + (word.value / maxVal) * 30;
-        const x = centerX + radius * Math.cos(angle);
-        const y = centerY + radius * Math.sin(angle);
+    // Occupancy map for collision detection
+    const placedWords = [];
 
-        ctx.font = `${size}px Courier New`;
-        ctx.fillStyle = palette[i];
-        ctx.fillText(word.text, x, y);
+    function checkOverlap(x, y, w, h) {
+        return placedWords.some(word => {
+            return !(
+                x + w < word.x || word.x + word.w < x ||
+                y + h < word.y || word.y + word.h < y
+            );
+        });
+    }
 
-        angle += 0.4;
-        radius += step;
-        await sleep(30 * config.drawing.speed);
+    function placeOnSpiral(wordWidth, wordHeight) {
+        let angle = 0;
+        let radius = 0;
+        const spiralStep = 4;
+        const angleStep = 0.2;
+
+        while (radius < Math.max(canvas.width, canvas.height)) {
+            const x = centerX + radius * Math.cos(angle) - wordWidth / 2;
+            const y = centerY + radius * Math.sin(angle) + wordHeight / 2;
+
+            if (
+                x > margin &&
+                y > margin + titlePad &&
+                x + wordWidth < canvas.width - margin &&
+                y + wordHeight < canvas.height - margin
+            ) {
+                if (!checkOverlap(x, y - wordHeight, wordWidth, wordHeight)) {
+                    return { x, y };
+                }
+            }
+
+            angle += angleStep;
+            radius += spiralStep * angleStep;
+        }
+
+        return null;
+    }
+
+    for (let i = 0; i < wordList.length; i++) {
+        const { text, value, color } = wordList[i];
+
+        const fontSize = 14 + ((value - minVal) / (maxVal - minVal || 1)) * 36;
+        ctx.font = `bold ${fontSize}px Courier New`;
+        const wordWidth = ctx.measureText(text).width;
+        const wordHeight = fontSize;
+
+        const position = placeOnSpiral(wordWidth, wordHeight);
+        if (position) {
+            ctx.fillStyle = color;
+            ctx.textAlign = "left";
+            ctx.fillText(text, position.x, position.y);
+            placedWords.push({
+                x: position.x,
+                y: position.y - wordHeight,
+                w: wordWidth,
+                h: wordHeight
+            });
+
+            await sleep(10 * config.drawing.speed);
+        }
     }
 }
-
-
 
 
 async function renderThreejs(entry) {

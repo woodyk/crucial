@@ -1,59 +1,61 @@
 {
   "name": "graph_bubble",
-  "description": "Render a bubble chart with x,y coordinates and relative sizes.",
+  "description": "Render a bubble chart with x, y coordinates and relative sizes using Crucial canvas styling.",
   "parameters": {
     "type": "object",
     "properties": {
       "canvas_id": {
-        "type": "string"
+        "type": "string",
+        "description": "Canvas to render on (e.g., 'canvas-xyz123')"
       },
-      "bubbles": {
+      "x_values": {
         "type": "array",
-        "description": "List of bubbles with x, y, and size",
-        "items": {
-          "type": "object",
-          "properties": {
-            "x": {
-              "type": "number"
-            },
-            "y": {
-              "type": "number"
-            },
-            "size": {
-              "type": "number"
-            }
-          },
-          "required": [
-            "x",
-            "y",
-            "size"
-          ]
-        }
+        "items": { "type": "number" },
+        "minItems": 2,
+        "description": "List of x positions for the bubbles (e.g., [1, 2, 3])"
+      },
+      "y_values": {
+        "type": "array",
+        "items": { "type": "number" },
+        "minItems": 2,
+        "description": "List of y positions for the bubbles (e.g., [4, 8, 6])"
+      },
+      "sizes": {
+        "type": "array",
+        "items": { "type": "number" },
+        "minItems": 2,
+        "description": "Relative bubble sizes (e.g., [10, 20, 15])"
       },
       "color": {
         "type": "string",
-        "pattern": "^#(?:[0-9a-fA-F]{3}){1,2}$"
+        "pattern": "^#(?:[0-9a-fA-F]{3}){1,2}$",
+        "description": "Hex color for all bubbles (e.g., '#33ccff')"
+      },
+      "title": {
+        "type": "string",
+        "description": "Optional title shown above the chart"
       },
       "theme": {
         "type": "string",
-        "enum": [
-          "light",
-          "dark"
-        ],
-        "default": "dark"
-      },
-      "title": {
-        "type": "string"
+        "enum": ["light", "dark"],
+        "default": "dark",
+        "description": "Canvas theme: 'light' or 'dark'"
       },
       "transparent": {
         "type": "boolean",
-        "default": false
+        "default": false,
+        "description": "Render with transparent background if true"
+      },
+      "x_label": {
+        "type": "string",
+        "description": "Label for the x-axis"
+      },
+      "y_label": {
+        "type": "string",
+        "description": "Label for the y-axis"
       }
     },
-    "required": [
-      "canvas_id",
-      "bubbles",
-      "color"
-    ]
+    "required": ["canvas_id", "x_values", "y_values", "sizes", "color"]
   }
 }
+

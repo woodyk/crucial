@@ -2,11 +2,10 @@
 # -*- coding: utf-8 -*-
 #
 # File: loader.py
-# Author: Wadih Khairallah
-# Description: 
-# Created: 2025-05-08 20:20:02
-# Modified: 2025-05-08 20:22:24
-# loader.py
+# Author: Ms. White 
+# Description: Generates Crucial-compatible typed functions and returns them for LLM integration.
+# Created: 2025-05-08
+# Modified: 2025-05-09 18:00:41
 
 import json
 from typing import Optional
@@ -15,10 +14,14 @@ from crucial.registry import get_registry
 
 def crucial_python_loader(base_url: str) -> Response:
     """
-    Generates a Python script containing all registered Crucial tools as typed Python functions.
+    Generate Python client functions for registered Crucial tools with typing and LLM-aligned returns.
+
+    Returns:
+        Response: A plain text response containing valid Python code.
     """
     registry = get_registry()
     functions = []
+    exported_names = []
 
     header = f'''\
 # Auto-generated Crucial client from {base_url}/python
@@ -43,6 +46,7 @@ LAST_CANVAS_ID = None
     for module in registry.get("modules", []):
         original_name = module["name"]
         name = f"canvas_{original_name}"
+        exported_names.append(name)
         schema = module.get("parameters", {})
         props = schema.get("properties", {})
         required = schema.get("required", [])
@@ -62,17 +66,35 @@ LAST_CANVAS_ID = None
             sig_parts.append(f"{k}: Optional[{pytype}] = None")
 
         signature = ", ".join(sig_parts)
-
-        # Build parameter dict entries
         param_dict = ",\n        ".join(f'"{k}": {k}' for k in props)
 
-        docstring = f'"""{desc.strip()}\n\nParameters:\n'
+        # Google-style docstring with return metadata
+        docstring_lines = [
+            f'"""',
+            f"{desc.strip()}",
+            "",
+            "Args:"
+        ]
         for k in required_keys + optional_keys:
             t = props[k].get("type", "any")
-            d = props[k].get("description", "")
-            req = "required" if k in required else "optional"
-            docstring += f"  - {k} ({t}, {req}): {d}\n"
-        docstring += '"""'
+            d = props[k].get("description", "").strip()
+            pytype = type_map.get(t, "Any")
+            optional = k not in required
+            type_repr = f"Optional[{pytype}]" if optional else pytype
+            docstring_lines.append(f"    {k} ({type_repr}): {d or 'Parameter.'}")
+        docstring_lines += [
+            "",
+            "Returns:",
+            "    dict: {",
+            '        "status": "success" or "error",',
+            '        "action": str,',
+            '        "data": dict (if success),',
+            '        "error": str (if failure),',
+            '        "suggestion": str (if applicable)',
+            "    }",
+            '"""'
+        ]
+        docstring = "\n".join(docstring_lines)
 
         if original_name == "create":
             fn = f'''
@@ -86,11 +108,23 @@ def {name}({signature}):
         "Content-Type": "application/json",
         "x-api-key": API_KEY
     }}
-    r = requests.post(f"{{BASE_URL}}/canvas/create", json=payload, headers=headers)
-    r.raise_for_status()
-    data = r.json()
-    LAST_CANVAS_ID = data.get("canvas_id")
-    return data
+    try:
+        r = requests.post(f"{{BASE_URL}}/canvas/create", json=payload, headers=headers)
+        r.raise_for_status()
+        data = r.json()
+        LAST_CANVAS_ID = data.get("canvas_id")
+        return {{
+            "status": "success",
+            "action": "create",
+            "data": data
+        }}
+    except Exception as e:
+        return {{
+            "status": "error",
+            "action": "create",
+            "error": str(e),
+            "suggestion": "Check API key, network connection, or payload format."
+        }}
 '''.strip()
         else:
             fn = f'''
@@ -106,13 +140,33 @@ def {name}({signature}):
         "Content-Type": "application/json",
         "x-api-key": API_KEY
     }}
-    r = requests.post(f"{{BASE_URL}}/canvas", json=payload, headers=headers)
-    r.raise_for_status()
-    return r.json()
+    try:
+        r = requests.post(f"{{BASE_URL}}/canvas", json=payload, headers=headers)
+        r.raise_for_status()
+        return {{
+            "status": "success",
+            "action": "{original_name}",
+            "data": r.json()
+        }}
+    except Exception as e:
+        return {{
+            "status": "error",
+            "action": "{original_name}",
+            "error": str(e),
+            "suggestion": "Check API key, network connection, or request format."
+        }}
 '''.strip()
 
         functions.append(fn)
 
-    full_code = header + "\n\n" + "\n\n".join(functions)
+    export_dict = "\n".join([
+        f'    "{name}": {name},' for name in exported_names
+    ])
+
+    footer = f'''
+__all__ = [{", ".join(f'"{n}"' for n in exported_names)}]
+'''.strip()
+
+    full_code = header + "\n\n" + "\n\n".join(functions) + "\n\n" + footer
     return Response(content=full_code, media_type="text/plain")
 

@@ -1,56 +1,47 @@
 {
   "name": "graph_wordcloud",
-  "description": "Draw a word cloud where word size reflects frequency or weight.",
+  "description": "Render a word cloud using weighted word sizes and canvas-based layout.",
   "parameters": {
     "type": "object",
     "properties": {
       "canvas_id": {
-        "type": "string"
+        "type": "string",
+        "description": "Canvas to render the word cloud on"
       },
-      "words": {
+      "word_texts": {
         "type": "array",
-        "description": "List of {text, value} items",
-        "items": {
-          "type": "object",
-          "properties": {
-            "text": {
-              "type": "string"
-            },
-            "value": {
-              "type": "number"
-            }
-          },
-          "required": [
-            "text",
-            "value"
-          ]
-        }
+        "items": { "type": "string" },
+        "minItems": 1,
+        "description": "List of word texts (e.g., ['AI', 'data', 'model'])"
+      },
+      "word_values": {
+        "type": "array",
+        "items": { "type": "number" },
+        "minItems": 1,
+        "description": "List of corresponding numerical values (e.g., [10, 20, 15])"
       },
       "color": {
         "type": "string",
         "pattern": "^#(?:[0-9a-fA-F]{3}){1,2}$",
-        "description": "Base color to tint word variations"
+        "description": "Base hex color used for word tinting (e.g., '#00ccff')"
+      },
+      "title": {
+        "type": "string",
+        "description": "Optional title displayed above the word cloud"
       },
       "theme": {
         "type": "string",
-        "enum": [
-          "light",
-          "dark"
-        ],
-        "default": "dark"
-      },
-      "title": {
-        "type": "string"
+        "enum": ["light", "dark"],
+        "default": "dark",
+        "description": "Visual theme styling"
       },
       "transparent": {
         "type": "boolean",
-        "default": false
+        "default": false,
+        "description": "Whether to render background as transparent"
       }
     },
-    "required": [
-      "canvas_id",
-      "words",
-      "color"
-    ]
+    "required": ["canvas_id", "word_texts", "word_values", "color"]
   }
 }
+

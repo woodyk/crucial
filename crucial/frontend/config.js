@@ -3,7 +3,7 @@
 // Author: Wadih Khairallah
 // Description: Crucial canvas frontend configuration
 // Created: 2025-05-06
-// Modified: 2025-05-08 15:26:51
+// Modified: 2025-05-09 16:08:29
 
 export const config = {
     apiBase: "",
@@ -60,12 +60,14 @@ export const themeStyles = {
     "dark": {
         background: "#000000",
         text: "#ffffff",
-        accent: "#4ba3ff"
+        accent: "#4ba3ff",
+        grid: "#444444"  // NEW
     },
     "light": {
         background: "#ffffff",
         text: "#000000",
-        accent: "#0066cc"
+        accent: "#0066cc",
+        grid: "#cccccc"  // NEW
     }
 };
 

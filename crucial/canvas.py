@@ -5,7 +5,7 @@
 # Author: Ms. White
 # Description: Crucial Canvas class with DB-integrated action logging and WebSocket broadcasts
 # Created: 2025-05-07
-# Modified: 2025-05-08 19:14:39
+# Modified: 2025-05-08 21:08:35
 
 import os
 import json
@@ -173,11 +173,10 @@ class Canvas:
         return canvas
 
     @staticmethod
-    def render_threejs(canvas_id, script):
-        canvas = Canvas.from_id(canvas_id)
+    def render_threejs(canvas, script):
         if not canvas:
-            logger.error("Canvas not found for render_threejs: %s", canvas_id)
-            raise ValueError(f"Canvas not found: {canvas_id}")
+            logger.error("Canvas not found for render_threejs")
+            raise ValueError("Canvas is required")
         canvas._mark_type("threejs")
         canvas._store_action("render_threejs", {
             "canvas_id": canvas.id,

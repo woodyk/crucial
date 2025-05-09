@@ -1,54 +1,55 @@
 {
   "name": "graph_scatter",
-  "description": "Render a scatter plot of 2D points.",
+  "description": "Render a 2D scatter plot of (x, y) points with grid lines and axis labels.",
   "parameters": {
     "type": "object",
     "properties": {
       "canvas_id": {
-        "type": "string"
+        "type": "string",
+        "description": "Canvas to render to (e.g., 'abc123')"
       },
-      "points": {
+      "x_values": {
         "type": "array",
-        "items": {
-          "type": "object",
-          "properties": {
-            "x": {
-              "type": "number"
-            },
-            "y": {
-              "type": "number"
-            }
-          },
-          "required": [
-            "x",
-            "y"
-          ]
-        }
+        "items": { "type": "number" },
+        "minItems": 2,
+        "description": "List of x coordinates (e.g., [1, 2, 3])"
+      },
+      "y_values": {
+        "type": "array",
+        "items": { "type": "number" },
+        "minItems": 2,
+        "description": "List of y coordinates (e.g., [4, 8, 6])"
       },
       "color": {
         "type": "string",
-        "pattern": "^#(?:[0-9a-fA-F]{3}){1,2}$"
+        "pattern": "^#(?:[0-9a-fA-F]{3}){1,2}$",
+        "description": "Hex color code for the points (e.g., '#ff00cc')"
+      },
+      "title": {
+        "type": "string",
+        "description": "Optional title to display above the plot"
       },
       "theme": {
         "type": "string",
-        "enum": [
-          "light",
-          "dark"
-        ],
-        "default": "dark"
-      },
-      "title": {
-        "type": "string"
+        "enum": ["light", "dark"],
+        "default": "dark",
+        "description": "Theme for background and grid"
       },
       "transparent": {
         "type": "boolean",
-        "default": false
+        "default": false,
+        "description": "Whether to use a transparent background"
+      },
+      "x_label": {
+        "type": "string",
+        "description": "Label for the x-axis (e.g., 'Time')"
+      },
+      "y_label": {
+        "type": "string",
+        "description": "Label for the y-axis (e.g., 'Distance')"
       }
     },
-    "required": [
-      "canvas_id",
-      "points",
-      "color"
-    ]
+    "required": ["canvas_id", "x_values", "y_values", "color"]
   }
 }
+

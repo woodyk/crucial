@@ -1,55 +1,45 @@
 {
   "name": "graph_donut",
-  "description": "Draw a Crucial-styled donut chart (variant of pie).",
+  "description": "Draw a Crucial-styled donut chart with central highlight label.",
   "parameters": {
     "type": "object",
     "properties": {
       "canvas_id": {
-        "type": "string"
+        "type": "string",
+        "description": "Target canvas identifier."
       },
-      "data": {
+      "labels": {
         "type": "array",
-        "description": "List of {label, value} segments",
-        "items": {
-          "type": "object",
-          "properties": {
-            "label": {
-              "type": "string"
-            },
-            "value": {
-              "type": "number"
-            }
-          },
-          "required": [
-            "label",
-            "value"
-          ]
-        }
+        "items": { "type": "string" },
+        "description": "Labels for each donut slice. Must align with values."
+      },
+      "values": {
+        "type": "array",
+        "items": { "type": "number" },
+        "description": "Values for each slice. Determines angular proportion."
       },
       "color": {
         "type": "string",
-        "pattern": "^#(?:[0-9a-fA-F]{3}){1,2}$"
+        "pattern": "^#(?:[0-9a-fA-F]{3}){1,2}$",
+        "description": "Base hex color for shading (e.g., #3399ff)."
       },
       "theme": {
         "type": "string",
-        "enum": [
-          "light",
-          "dark"
-        ],
-        "default": "dark"
+        "enum": ["light", "dark"],
+        "default": "dark",
+        "description": "Theme context for background and text color."
       },
       "title": {
-        "type": "string"
+        "type": "string",
+        "description": "Optional title for the chart header."
       },
       "transparent": {
         "type": "boolean",
-        "default": false
+        "default": false,
+        "description": "True to omit background fill, use alpha transparency."
       }
     },
-    "required": [
-      "canvas_id",
-      "data",
-      "color"
-    ]
+    "required": ["canvas_id", "labels", "values", "color"]
   }
 }
+
