@@ -3,19 +3,21 @@
 #
 # File: canvas.py
 # Author: Ms. White
-# Description: Crucial Canvas class with DB-integrated action logging
-# Created: 2025-05-07 22:24:26
-# Modified: 2025-05-08 17:01:54
-# Updated: 2025-05-07
+# Description: Crucial Canvas class with DB-integrated action logging and WebSocket broadcasts
+# Created: 2025-05-07
+# Modified: 2025-05-08 19:14:39
 
 import os
 import json
 import uuid
-import sys
+import asyncio
 from datetime import datetime
 from crucial.config import CONFIG, get_logger
 from crucial.db import get_db_connection
 from crucial.utils.human_id import generate_human_id
+
+# External reference (injected at runtime in server.py)
+# canvas_subscribers = {}  # populated via FastAPI WebSocket route
 
 logger = get_logger(__name__)
 
@@ -57,6 +59,22 @@ class Canvas:
         conn.commit()
         logger.debug("Canvas[%s] action logged: %s", self.id, action_type)
 
+        # WebSocket broadcast (if enabled and active)
+        asyncio.create_task(self._broadcast(action_type, parameters, timestamp))
+
+    async def _broadcast(self, action, params, timestamp):
+        message = json.dumps({
+            "action": action,
+            "params": params,
+            "timestamp": timestamp
+        })
+        clients = list(canvas_subscribers.get(self.id, []))
+        for ws in clients:
+            try:
+                await ws.send_text(message)
+            except Exception as e:
+                logger.warning("WebSocket send failed: %s", e)
+
     def _mark_type(self, type_name):
         conn = get_db_connection()
         cur = conn.cursor()
@@ -69,7 +87,7 @@ class Canvas:
         conn.commit()
         logger.info("Canvas[%s] type marked as: %s", self.id, type_name)
 
-    # Core drawing methods
+    # Drawing primitives
     def clear(self, canvas_id): self._store_action("clear", {"canvas_id": canvas_id})
     def draw_line(self, **kwargs): self._store_action("draw_line", kwargs)
     def draw_circle(self, **kwargs): self._store_action("draw_circle", kwargs)
@@ -83,13 +101,13 @@ class Canvas:
     def draw_path(self, **kwargs): self._store_action("draw_path", kwargs)
     def draw_spline(self, **kwargs): self._store_action("draw_spline", kwargs)
 
-    # Canvas transforms
+    # Transforms
     def rotate(self, **kwargs): self._store_action("rotate", kwargs)
     def scale(self, **kwargs): self._store_action("scale", kwargs)
     def translate(self, **kwargs): self._store_action("translate", kwargs)
     def set_background(self, **kwargs): self._store_action("set_background", kwargs)
 
-    # Graphing methods
+    # Graphs
     def graph_bar(self, **kwargs): self._store_action("graph_bar", kwargs)
     def graph_line(self, **kwargs): self._store_action("graph_line", kwargs)
     def graph_pie(self, **kwargs): self._store_action("graph_pie", kwargs)
@@ -103,40 +121,7 @@ class Canvas:
     def graph_radar(self, **kwargs): self._store_action("graph_radar", kwargs)
     def graph_wordcloud(self, **kwargs): self._store_action("graph_wordcloud", kwargs)
 
-
-    # Image Storage
-    def save(self, file_path=None, format="png"):
-        """
-        Save the canvas to disk as an image file.
-
-        Args:
-            file_path (str): Optional override for file path.
-            format (str): Output format, default is 'png'.
-
-        Returns:
-            str: Final path where the image was saved.
-        """
-        output_dir = CONFIG["SAVE"]["output_dir"]
-        os.makedirs(output_dir, exist_ok=True)
-
-        filename = file_path or f"{self.id}.{format.lower()}"
-        if not filename.lower().endswith(f".{format.lower()}"):
-            filename += f".{format.lower()}"
-        full_path = os.path.join(output_dir, filename)
-
-        image = Image.new("RGB", (self.width, self.height), self.bg_color)
-        draw = ImageDraw.Draw(image)
-        # Future: replay actions here into the image
-
-        image.save(full_path, format=format.upper())
-        logger.info("Canvas[%s] saved to %s", self.id, full_path)
-
-        return full_path
-
     def load_actions(self):
-        """
-        Load and cache canvas actions for rendering.
-        """
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute(
@@ -151,6 +136,22 @@ class Canvas:
                 self.actions.append({"action": action, "params": params})
             except Exception as e:
                 logger.warning("Failed to decode action row: %s", e)
+
+    @staticmethod
+    def create(**kwargs):
+        name = kwargs.get("name", "Untitled")
+        width = kwargs.get("x", 800)
+        height = kwargs.get("y", 600)
+        color = kwargs.get("color", "#000000")
+        canvas = Canvas(name, width, height, color)
+        return {
+            "status": "created",
+            "canvas_id": canvas.id,
+            "human_id": canvas.human_id,
+            "metadata": canvas.__dict__
+        }
+
+        return Canvas(name, width, height, bg_color)
 
     @staticmethod
     def load(canvas_id: str) -> "Canvas":
@@ -171,25 +172,6 @@ class Canvas:
         canvas.human_id = row["human_id"]
         return canvas
 
-
-    @staticmethod
-    def create(name: str, width: int, height: int, bg_color: str):
-        """
-        Factory method to create and persist a new Canvas instance.
-
-        Args:
-            name (str): Human-readable name for the canvas.
-            width (int): Width in pixels.
-            height (int): Height in pixels.
-            bg_color (str): Background color in hex.
-
-        Returns:
-            Canvas: A fully initialized Canvas object saved to DB.
-        """
-        canvas = Canvas(name, width, height, bg_color)
-        return canvas
-
-
     @staticmethod
     def render_threejs(canvas_id, script):
         canvas = Canvas.from_id(canvas_id)
@@ -197,7 +179,7 @@ class Canvas:
             logger.error("Canvas not found for render_threejs: %s", canvas_id)
             raise ValueError(f"Canvas not found: {canvas_id}")
         canvas._mark_type("threejs")
-        canvas._store_action("canvas_render_threejs", {
+        canvas._store_action("render_threejs", {
             "canvas_id": canvas.id,
             "script": script
         }, overwrite=True)
@@ -205,9 +187,6 @@ class Canvas:
 
     @staticmethod
     def resolve_id(identifier: str) -> str:
-        """
-        Resolve either a canvas UUID or a human ID to an internal canvas ID.
-        """
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute("SELECT id FROM canvases WHERE human_id = ?", (identifier,))
@@ -237,4 +216,8 @@ class Canvas:
         canvas.created_at = row["created_at"]
         logger.debug("Canvas object loaded: %s (%s)", canvas.name, canvas.id)
         return canvas
+
+def set_canvas_subscribers(ref):
+    global canvas_subscribers
+    canvas_subscribers = ref
 

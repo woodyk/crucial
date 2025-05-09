@@ -2,16 +2,10 @@
 # -*- coding: utf-8 -*-
 #
 # File: dispatcher.py
-# Author: Wadih Khairallah
-# Description: 
-# Created: 2025-05-08 02:31:08
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-#
-# File: dispatcher.py
 # Description: Action dispatcher for Crucial canvas operations
 # Author: Ms. White
-# Updated: 2025-05-08
+# Created: 2025-05-08 02:31:08
+# Modified: 2025-05-08 19:15:27
 
 import jsonschema
 from fastapi import HTTPException
@@ -59,7 +53,6 @@ class Dispatcher:
             raise HTTPException(status_code=404, detail=f"Unknown action: {action}")
 
         self.validate(action, params)
-
         method_name = self.methods[action]
         method = getattr(Canvas, method_name, None)
 
@@ -67,6 +60,17 @@ class Dispatcher:
             logger.error("Canvas method not implemented: %s", method_name)
             raise HTTPException(status_code=501, detail=f"Method not implemented: {method_name}")
 
+        # Special case: create() does not require canvas_id
+        if action == "create":
+            try:
+                result = method(**params)
+                logger.info("Canvas created successfully")
+                return result
+            except Exception as e:
+                logger.exception("Error during canvas creation")
+                raise HTTPException(status_code=500, detail=f"Create failed: {str(e)}")
+
+        # All other actions require an existing canvas
         canvas_id = params.get("canvas_id") or params.get("object_uri")
         if not canvas_id:
             raise HTTPException(status_code=400, detail="Missing canvas_id")
@@ -76,7 +80,7 @@ class Dispatcher:
             logger.warning("[Canvas API] Canvas %s not found. (HTTP 404)", canvas_id)
             raise HTTPException(status_code=404, detail=f"Canvas not found: {canvas_id}")
 
-        params.pop("canvas_id", None)  # <-- FIX: Remove to prevent duplicate argument
+        params.pop("canvas_id", None)
         logger.debug("Dispatching action: %s with params: %s", action, params)
 
         try:

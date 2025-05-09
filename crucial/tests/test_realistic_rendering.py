@@ -5,6 +5,7 @@
 # Author: Wadih Khairallah
 # Description: 
 # Created: 2025-05-07 23:57:04
+# Modified: 2025-05-08 17:59:42
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
@@ -141,7 +142,7 @@ def draw_realistic_object(canvas_id):
     })
 
     print("[✓] Realistic object rendered successfully.")
-    print(f"[→] View at: {BASE_URL}/?id={canvas_id}")
+    print(f"[→] View at: {BASE_URL}/canvas/{canvas_id}")
 
 if __name__ == "__main__":
     canvas_id = create_canvas()

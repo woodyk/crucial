@@ -2,7 +2,7 @@
 // Author: Crucial
 // Description: Real-time animated frontend renderer for Crucial Canvas
 // Created: 2025-05-06
-// Modified: 2025-05-08 17:26:22
+// Modified: 2025-05-08 17:45:29
 
 import {
   config,
@@ -172,19 +172,37 @@ async function renderNextAction() {
     else console.warn("Unknown action:", entry.action);
 }
 
-function startPolling() {
-    window.pollIntervalId = setInterval(pollCanvasHistory, config.pollingIntervalMs);
+function startRealtimeUpdates() {
+    const ws = new WebSocket(`ws://${location.host}/ws/canvas/${canvasId}`);
+
+    ws.onmessage = async (event) => {
+        const entry = JSON.parse(event.data);
+        history.push(entry);
+        await renderNextAction();  // or a queue/debounce
+    };
+
+    ws.onopen = () => console.log("[Crucial] WebSocket connected");
+    ws.onclose = () => console.warn("[Crucial] WebSocket disconnected");
 }
 
 window.addEventListener("load", async () => {
     const meta = await loadCanvasMetadata(canvasId);
     if (!meta) return;
 
-    // Set canvas size from metadata
     createFrame(meta.width, meta.height);
-
     showCanvasName(meta.name);
-    startPolling();
+
+    // Load and render full canvas history first
+    const res = await fetch(`/object/${canvasId}/history`);
+    if (res.ok) {
+        history = await res.json();
+        while (renderedIndex < history.length) {
+            await renderNextAction();
+        }
+    }
+
+    // Then start listening for live actions
+    startRealtimeUpdates();
 });
 
 // ========== Shape Primitives ==========

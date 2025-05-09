@@ -5,6 +5,7 @@
 # Author: Wadih Khairallah
 # Description: 
 # Created: 2025-05-07 23:54:37
+# Modified: 2025-05-08 17:58:47
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
@@ -124,7 +125,7 @@ def test_all_draw_functions():
     })
 
     print("[✓] All draw functions tested successfully.")
-    print(f"[→] View at: {BASE_URL}/?id={canvas_id}")
+    print(f"[→] View at: {BASE_URL}/canvas/{canvas_id}")
 
 if __name__ == "__main__":
     test_all_draw_functions()
