@@ -1,0 +1,43 @@
+{
+  "name": "draw_turtle",
+  "description": "Draw a path using turtle-style commands with a heading, forward movement, and pen control.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "canvas_id": {
+        "type": "string",
+        "description": "Canvas where the turtle path will be rendered."
+      },
+      "commands": {
+        "type": "array",
+        "description": "Flat list of turtle-style commands as strings or directional actions.",
+        "items": {
+          "type": "string",
+          "description": "Each command string follows 'command value' or 'command' (e.g., 'forward 100', 'left 90', 'penup')."
+        }
+      },
+      "start_x": {
+        "type": "number",
+        "description": "Starting X coordinate of the turtle."
+      },
+      "start_y": {
+        "type": "number",
+        "description": "Starting Y coordinate of the turtle."
+      },
+      "start_heading": {
+        "type": "number",
+        "description": "Initial turtle heading in degrees (0 = right, 90 = up)."
+      },
+      "pen_color": {
+        "type": "string",
+        "description": "Initial drawing color as a hex code."
+      },
+      "pen_width": {
+        "type": "integer",
+        "description": "Initial line thickness in pixels."
+      }
+    },
+    "required": ["canvas_id", "commands"]
+  }
+}
+

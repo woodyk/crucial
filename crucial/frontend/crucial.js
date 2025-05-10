@@ -2,7 +2,7 @@
 // Author: Crucial
 // Description: Real-time animated frontend renderer for Crucial Canvas
 // Created: 2025-05-06
-// Modified: 2025-05-09 19:16:37
+// Modified: 2025-05-10 00:29:55
 
 import {
   config,
@@ -102,6 +102,17 @@ function createFrame(width, height) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
 
+// Add second canvas for turtle overlay
+const overlayCanvas = document.createElement("canvas");
+overlayCanvas.width = canvas.width;
+overlayCanvas.height = canvas.height;
+overlayCanvas.style.position = "absolute";
+overlayCanvas.style.left = canvas.style.left;
+overlayCanvas.style.top = canvas.style.top;
+overlayCanvas.style.pointerEvents = "none";
+canvas.parentNode.appendChild(overlayCanvas);
+const overlayCtx = overlayCanvas.getContext("2d");
+
 // =================== Render Registry =======================
 const renderRegistry = {
     // Canvas primitives
@@ -118,6 +129,8 @@ const renderRegistry = {
     'draw_gradient': renderDrawGradient,
     'draw_path': renderDrawPath,
     'draw_spline': renderDrawSpline,
+    'draw_turtle': renderDrawTurtle,
+    'draw_raster': renderDrawRaster,
 
     // Graphs & Data visualizations
     'graph_bar': renderGraphBar,
@@ -397,6 +410,181 @@ async function renderDrawSpline(entry) {
     ctx.stroke();
 }
 
+async function renderDrawTurtle(entry) {
+    const {
+        commands,
+        start_x = 0,
+        start_y = 0,
+        start_heading = 0,
+        pen_color = "#000000",
+        pen_width = 2
+    } = entry.params;
+
+    let x = start_x;
+    let y = start_y;
+    let angle = start_heading;
+    let penDown = true;
+    let currentColor = pen_color;
+    let currentWidth = pen_width;
+
+    ctx.strokeStyle = currentColor;
+    ctx.lineWidth = currentWidth;
+
+    function drawTurtleHead(x, y, angleDeg) {
+        overlayCtx.clearRect(0, 0, canvas.width, canvas.height);
+        const rad = -angleDeg * Math.PI / 180;
+
+        overlayCtx.save();
+        overlayCtx.translate(x, y);
+        overlayCtx.rotate(rad);
+        overlayCtx.fillStyle = "#ff6600";
+        overlayCtx.beginPath();
+        overlayCtx.moveTo(0, 0);
+        overlayCtx.lineTo(-8, -5);
+        overlayCtx.lineTo(-8, 5);
+        overlayCtx.closePath();
+        overlayCtx.fill();
+        overlayCtx.restore();
+    }
+
+    drawTurtleHead(x, y, angle);
+
+    for (let cmd of commands) {
+        let instruction, arg;
+
+        if (typeof cmd === "string") {
+            const parts = cmd.trim().split(/\s+/);
+            instruction = parts[0].toLowerCase();
+            arg = parts.length > 1 ? parts.slice(1).join(" ") : null;
+        } else if (Array.isArray(cmd)) {
+            instruction = String(cmd[0]).toLowerCase();
+            arg = cmd.length > 1 ? cmd[1] : null;
+        } else {
+            console.warn("Invalid turtle command:", cmd);
+            continue;
+        }
+
+        const num = parseFloat(arg);
+        const coords = typeof arg === "string" ? arg.split(",").map(Number) : [];
+
+        switch (instruction) {
+            case "forward":
+            case "backward":
+                {
+                    const rad = angle * Math.PI / 180;
+                    const dir = instruction === "forward" ? 1 : -1;
+                    const dist = isNaN(num) ? 0 : num;
+                    const newX = x + dir * Math.cos(rad) * dist;
+                    const newY = y - dir * Math.sin(rad) * dist;
+
+                    if (penDown) {
+                        ctx.beginPath();
+                        ctx.moveTo(x, y);
+                        ctx.lineTo(newX, newY);
+                        ctx.stroke();
+                    }
+
+                    x = newX;
+                    y = newY;
+                }
+                break;
+
+            case "left":
+                angle = (angle + num) % 360;
+                break;
+
+            case "right":
+                angle = (angle - num + 360) % 360;
+                break;
+
+            case "goto":
+                if (Array.isArray(arg) && arg.length === 2) {
+                    const [gx, gy] = arg;
+                    if (penDown) {
+                        ctx.beginPath();
+                        ctx.moveTo(x, y);
+                        ctx.lineTo(gx, gy);
+                        ctx.stroke();
+                    }
+                    x = gx;
+                    y = gy;
+                } else if (coords.length === 2) {
+                    const [gx, gy] = coords;
+                    if (penDown) {
+                        ctx.beginPath();
+                        ctx.moveTo(x, y);
+                        ctx.lineTo(gx, gy);
+                        ctx.stroke();
+                    }
+                    x = gx;
+                    y = gy;
+                }
+                break;
+
+            case "setheading":
+                angle = parseFloat(arg);
+                break;
+
+            case "penup":
+                penDown = false;
+                break;
+
+            case "pendown":
+                penDown = true;
+                break;
+
+            case "setcolor":
+                currentColor = String(arg);
+                ctx.strokeStyle = currentColor;
+                break;
+
+            case "setwidth":
+                currentWidth = parseInt(arg, 10);
+                ctx.lineWidth = currentWidth;
+                break;
+
+            default:
+                console.warn("Unknown turtle command:", instruction, arg);
+        }
+
+        drawTurtleHead(x, y, angle);
+        await sleep(100 * config.drawing.speed);
+    }
+
+    drawTurtleHead(x, y, angle);
+}
+
+async function renderDrawRaster(entry) {
+    const { pixels } = entry.params;
+
+    if (!Array.isArray(pixels)) {
+        console.warn("Invalid draw_raster payload:", entry);
+        return;
+    }
+
+    const drawDelay = 2 * config.drawing.speed;
+    const pixelLimit = 500; // max pixels to animate before skipping delay
+    const animateRandomly = true;
+
+    const drawOrder = [...pixels];
+
+    if (animateRandomly) {
+        for (let i = drawOrder.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [drawOrder[i], drawOrder[j]] = [drawOrder[j], drawOrder[i]];
+        }
+    }
+
+    for (let i = 0; i < drawOrder.length; i++) {
+        const { x, y, color } = drawOrder[i];
+        ctx.fillStyle = color;
+        ctx.fillRect(x, y, 1, 1);
+
+        if (i < pixelLimit) {
+            await sleep(drawDelay);
+        }
+    }
+}
 
 
 async function renderClear(entry) {

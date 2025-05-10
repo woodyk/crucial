@@ -44,3 +44,5 @@ crucial/tools/.last_canvas_id
 *.key
 *.pem
 logs/*
+refactor
+organize

@@ -1,0 +1,37 @@
+{
+  "name": "draw_raster",
+  "description": "Draw a raster of pixels by setting individual (x, y) coordinates to specific colors in a single batched action.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "canvas_id": {
+        "type": "string",
+        "description": "The canvas where the raster pixels will be drawn."
+      },
+      "pixels": {
+        "type": "array",
+        "description": "List of pixels to draw, each defined by x, y, and color.",
+        "items": {
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "integer",
+              "description": "X coordinate of the pixel."
+            },
+            "y": {
+              "type": "integer",
+              "description": "Y coordinate of the pixel."
+            },
+            "color": {
+              "type": "string",
+              "description": "Color of the pixel, in hex (e.g. '#ff0000') or rgba format."
+            }
+          },
+          "required": ["x", "y", "color"]
+        }
+      }
+    },
+    "required": ["canvas_id", "pixels"]
+  }
+}
+
