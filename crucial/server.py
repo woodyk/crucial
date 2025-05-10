@@ -6,11 +6,13 @@
 #              including frontend static hosting
 # Author: Ms. White
 # Created: 2025-05-06
-# Modified: 2025-05-08 20:16:13
+# Modified: 2025-05-09 21:00:30
 
 import os
 import json
+import time
 import uvicorn
+import threading
 
 from io import BytesIO
 from collections import defaultdict
@@ -34,7 +36,7 @@ from fastapi.staticfiles import StaticFiles
 
 from crucial.registry import get_registry
 from crucial.dispatcher import Dispatcher
-from crucial.db import get_db_connection
+from crucial.db import get_db_connection, cleanup_expired_canvases
 from crucial.canvas import Canvas, set_canvas_subscribers
 from crucial.auth import require_api_key_header
 from crucial.config import CONFIG, get_logger
@@ -328,6 +330,20 @@ async def serve_dynamic_python_loader(request: Request):
 
 app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
 
+def start_periodic_cleanup():
+    interval = CONFIG["CANVAS"]["cleanup_interval"]
+    
+    def loop():
+        logger.info("Starting first canvas cleanup immediately")
+        cleanup_expired_canvases()  # ← immediate
+        while True:
+            time.sleep(interval)
+            cleanup_expired_canvases()
+    
+    t = threading.Thread(target=loop, daemon=True)
+    t.start()
+    logger.info("Started background canvas cleanup every %d seconds", interval)
+
 if __name__ == "__main__":
     import asyncio
     from uvicorn import Config, Server
@@ -335,6 +351,7 @@ if __name__ == "__main__":
     logger.info("Starting Crucial API server...")
     config = Config("crucial.server:app", host="0.0.0.0", port=8000, reload=True)
     server = Server(config)
+    start_periodic_cleanup()
 
     try:
         asyncio.run(server.serve())

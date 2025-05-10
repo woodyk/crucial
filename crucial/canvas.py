@@ -5,7 +5,7 @@
 # Author: Ms. White
 # Description: Crucial Canvas class with DB-integrated action logging and WebSocket broadcasts
 # Created: 2025-05-07
-# Modified: 2025-05-08 21:08:35
+# Modified: 2025-05-09 20:56:48
 
 import os
 import json
@@ -28,7 +28,7 @@ class Canvas:
         self.width = width
         self.height = height
         self.bg_color = bg_color
-        self.created_at = datetime.utcnow().isoformat()
+        self.created_at = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
         self._init_db()
         logger.info("Initialized canvas '%s' (%s) %dx%d bg=%s",
                     self.name, self.id, self.width, self.height, self.bg_color)
@@ -88,7 +88,14 @@ class Canvas:
         logger.info("Canvas[%s] type marked as: %s", self.id, type_name)
 
     # Drawing primitives
-    def clear(self, canvas_id): self._store_action("clear", {"canvas_id": canvas_id})
+    def clear(self, canvas_id):
+        self._store_action("clear", {"canvas_id": canvas_id})  # Optional trace
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("DELETE FROM actions WHERE canvas_id = ?", (canvas_id,))
+        conn.commit()
+        logger.info("Canvas[%s] actions purged after clear marker", canvas_id)
+
     def draw_line(self, **kwargs): self._store_action("draw_line", kwargs)
     def draw_circle(self, **kwargs): self._store_action("draw_circle", kwargs)
     def draw_rectangle(self, **kwargs): self._store_action("draw_rectangle", kwargs)

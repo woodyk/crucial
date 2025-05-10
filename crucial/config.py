@@ -2,7 +2,7 @@
 # Description: Central configuration for Crucial platform
 # Author: Ms. White
 # Created: 2025-05-06
-# Modified: 2025-05-07 22:20:03
+# Modified: 2025-05-09 20:48:53
 
 import os
 import logging
@@ -23,7 +23,9 @@ CONFIG = {
         "default_width": int(os.getenv("CANVAS_WIDTH", 800)),
         "default_height": int(os.getenv("CANVAS_HEIGHT", 600)),
         "default_bg": os.getenv("CANVAS_BACKGROUND", "#000000"),
-        "validate_schema": os.getenv("CANVAS_VALIDATE", "false").lower() == "true"
+        "validate_schema": os.getenv("CANVAS_VALIDATE", "false").lower() == "true",
+        "ttl_seconds": int(os.getenv("CANVAS_TTL_SECONDS", 10800)),
+        "cleanup_interval": int(os.getenv("CLEANUP_INTERVAL_SECONDS", 300))
     },
     "FRONTEND": {
         "enable_websocket": os.getenv("FRONTEND_ENABLE_WS", "true").lower() == "true",

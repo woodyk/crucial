@@ -5,7 +5,7 @@
 # Author: Ms. White 
 # Description: Generates Crucial-compatible typed functions and returns them for LLM integration.
 # Created: 2025-05-08
-# Modified: 2025-05-09 18:00:41
+# Modified: 2025-05-09 20:35:00
 
 import json
 from typing import Optional
@@ -68,7 +68,6 @@ LAST_CANVAS_ID = None
         signature = ", ".join(sig_parts)
         param_dict = ",\n        ".join(f'"{k}": {k}' for k in props)
 
-        # Google-style docstring with return metadata
         docstring_lines = [
             f'"""',
             f"{desc.strip()}",
@@ -158,6 +157,47 @@ def {name}({signature}):
 '''.strip()
 
         functions.append(fn)
+
+    # Append open_canvas utility
+    open_canvas_fn = '''
+def open_canvas(canvas_id: str):
+    """
+    Open the default web browser to the canvas URL for the given canvas_id.
+
+    Args:
+        canvas_id (str): The unique ID of the canvas to view.
+
+    Returns:
+        dict: {
+            "status": "success" or "error",
+            "action": "open_canvas",
+            "data": {
+                "url": str
+            },
+            "error": str (if failure),
+            "suggestion": str (if applicable)
+        }
+    """
+    import webbrowser
+    try:
+        url = f"{BASE_URL}/canvas/{canvas_id}"
+        webbrowser.open(url, new=0)
+        return {
+            "status": "success",
+            "action": "open_canvas",
+            "data": {"url": url}
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "action": "open_canvas",
+            "error": str(e),
+            "suggestion": "Ensure a default browser is available and the URL is well-formed."
+        }
+'''.strip()
+
+    functions.append(open_canvas_fn)
+    exported_names.append("open_canvas")
 
     export_dict = "\n".join([
         f'    "{name}": {name},' for name in exported_names

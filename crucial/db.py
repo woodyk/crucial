@@ -5,8 +5,9 @@
 # Description: SQLite data model and helpers for Crucial canvas platform
 # Author: Ms. White
 # Created: 2025-05-06
-# Modified: 2025-05-07 12:39:21
+# Modified: 2025-05-09 21:02:47
 
+import time
 import sqlite3
 from pathlib import Path
 from crucial.config import CONFIG, get_logger
@@ -85,4 +86,26 @@ def _ensure_tables_exist(conn):
 def _get_existing_tables(cursor):
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
     return {row[0] for row in cursor.fetchall()}
+
+def cleanup_expired_canvases():
+    ttl = CONFIG["CANVAS"]["ttl_seconds"]
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT id FROM canvases
+        WHERE datetime(created_at) < datetime('now', ? || ' seconds')
+    """, (-ttl,))
+    expired = [row["id"] for row in cur.fetchall()]
+
+    if not expired:
+        logger.info("No expired canvases to clean.")
+        return
+
+    cur.executemany("DELETE FROM actions WHERE canvas_id = ?", [(cid,) for cid in expired])
+    cur.executemany("DELETE FROM canvases WHERE id = ?", [(cid,) for cid in expired])
+    conn.commit()
+
+    logger.info("Expired canvas cleanup complete. Removed %d canvases", len(expired))
 
