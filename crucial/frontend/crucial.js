@@ -2,7 +2,7 @@
 // Author: Crucial
 // Description: Real-time animated frontend renderer for Crucial Canvas
 // Created: 2025-05-06
-// Modified: 2025-05-10 00:29:55
+// Modified: 2025-05-10 02:44:05
 
 import {
   config,
@@ -131,6 +131,7 @@ const renderRegistry = {
     'draw_spline': renderDrawSpline,
     'draw_turtle': renderDrawTurtle,
     'draw_raster': renderDrawRaster,
+    'draw_bitmap': renderDrawBitmap,
 
     // Graphs & Data visualizations
     'graph_bar': renderGraphBar,
@@ -583,6 +584,39 @@ async function renderDrawRaster(entry) {
         if (i < pixelLimit) {
             await sleep(drawDelay);
         }
+    }
+}
+
+function renderDrawBitmap(entry) {
+    const { x, y, width, height, rgba } = entry.params;
+
+    if (!rgba || typeof rgba !== "string" || width <= 0 || height <= 0) {
+        console.warn("Invalid draw_bitmap parameters", entry);
+        return;
+    }
+
+    try {
+        const raw = atob(rgba);
+        const expectedBytes = width * height * 4;
+
+        if (raw.length !== expectedBytes) {
+            console.warn("draw_bitmap: RGBA length mismatch", {
+                width,
+                height,
+                expected: expectedBytes,
+                actual: raw.length
+            });
+            return;
+        }
+
+        const imageData = ctx.createImageData(width, height);
+        for (let i = 0; i < expectedBytes; i++) {
+            imageData.data[i] = raw.charCodeAt(i);
+        }
+
+        ctx.putImageData(imageData, x, y);
+    } catch (err) {
+        console.error("draw_bitmap decoding error", err);
     }
 }
 

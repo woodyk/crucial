@@ -5,7 +5,7 @@
 # Author: Ms. White
 # Description: Crucial Canvas class with DB-integrated action logging and WebSocket broadcasts
 # Created: 2025-05-07
-# Modified: 2025-05-09 23:48:49
+# Modified: 2025-05-10 02:30:10
 
 import os
 import json
@@ -109,6 +109,7 @@ class Canvas:
     def draw_spline(self, **kwargs): self._store_action("draw_spline", kwargs)
     def draw_turtle(self, **kwargs): self._store_action("draw_turtle", kwargs)
     def draw_raster(self, **kwargs): self._store_action("draw_raster", kwargs)
+    def draw_bitmap(self, **kwargs): self._store_action("draw_bitmap", kwargs)
 
     # Transforms
     def rotate(self, **kwargs): self._store_action("rotate", kwargs)

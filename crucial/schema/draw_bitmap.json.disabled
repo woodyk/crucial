@@ -1,0 +1,35 @@
+{
+  "name": "draw_bitmap",
+  "description": "Draw a raw RGBA bitmap onto the canvas using base64-encoded pixel data. The data must be exactly width × height × 4 bytes and fit within the canvas bounds starting at (x, y).",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "canvas_id": {
+        "type": "string",
+        "description": "The canvas where the bitmap will be rendered."
+      },
+      "x": {
+        "type": "integer",
+        "description": "The horizontal offset where the bitmap will be drawn."
+      },
+      "y": {
+        "type": "integer",
+        "description": "The vertical offset where the bitmap will be drawn."
+      },
+      "width": {
+        "type": "integer",
+        "description": "The width of the bitmap in pixels."
+      },
+      "height": {
+        "type": "integer",
+        "description": "The height of the bitmap in pixels."
+      },
+      "rgba": {
+        "type": "string",
+        "description": "Base64-encoded raw RGBA byte array"
+      }
+    },
+    "required": ["canvas_id", "x", "y", "width", "height", "data"]
+  }
+}
+
